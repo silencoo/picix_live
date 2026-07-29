@@ -1,0 +1,37 @@
+curl ^"https://picix.us/api/Movies/search?keyword=SONE-333^&page=0^" ^
+  -H ^"accept: application/json, text/plain, */*^" ^
+  -H ^"accept-language: en-GB,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6^" ^
+  -H ^"authorization: <redacted>^" ^
+  -b ^"cf_clearance=<redacted>^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://picix.us/Movies/Search?keyword=SONE-145^" ^
+  -H ^"sec-ch-ua: ^\^"Not(A:Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"144^\^", ^\^"Google Chrome^\^";v=^\^"144^\^"^" ^
+  -H ^"sec-ch-ua-arch: ^\^"x86^\^"^" ^
+  -H ^"sec-ch-ua-bitness: ^\^"64^\^"^" ^
+  -H ^"sec-ch-ua-full-version: ^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-full-version-list: ^\^"Not(A:Brand^\^";v=^\^"8.0.0.0^\^", ^\^"Chromium^\^";v=^\^"144.0.7559.60^\^", ^\^"Google Chrome^\^";v=^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-model: ^\^"^\^"^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-ch-ua-platform-version: ^\^"19.0.0^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36^"
+
+
+
+
+{
+    "success": true,
+    "msg": "搜索电影关键词",
+    "data": [
+        {
+            "id": 12606,
+            "title": "SONE-333 生意気OLが出張先ホテルでセクハラ中年上司と2人きり。 いつもキモいと思っていたのに朝まで萎えない絶倫チ●ポに彼氏よりもメロメロ快楽堕ち。 倉木華 （BOD）",
+            "cover": "https:\/\/img.picix.us\/6a\/6aad801b6e4b1044f615b5ad91b011694e983332.jpg",
+            "releaseDate": "2024-09-20",
+            "source": 1
+        }
+    ]
+}

@@ -1,0 +1,429 @@
+curl ^"https://picix.us/api/Movies/listMovieList?page=1^&sort=favorite_count^" ^
+  -H ^"accept: application/json, text/plain, */*^" ^
+  -H ^"accept-language: en-GB,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6^" ^
+  -H ^"authorization: <redacted>^" ^
+  -b ^"cf_clearance=<redacted>^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://picix.us/MovieList/Explore^" ^
+  -H ^"sec-ch-ua: ^\^"Not(A:Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"144^\^", ^\^"Google Chrome^\^";v=^\^"144^\^"^" ^
+  -H ^"sec-ch-ua-arch: ^\^"x86^\^"^" ^
+  -H ^"sec-ch-ua-bitness: ^\^"64^\^"^" ^
+  -H ^"sec-ch-ua-full-version: ^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-full-version-list: ^\^"Not(A:Brand^\^";v=^\^"8.0.0.0^\^", ^\^"Chromium^\^";v=^\^"144.0.7559.60^\^", ^\^"Google Chrome^\^";v=^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-model: ^\^"^\^"^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-ch-ua-platform-version: ^\^"19.0.0^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36^"
+
+
+
+{
+    "success": true,
+    "msg": "拉取片单列表",
+    "data": [
+        {
+            "id": 1,
+            "title": "一切开干就脱丝袜的影片均为封面诈骗",
+            "desc": "<p>拒绝封面丝袜诈骗，迎接高含量丝袜片<\/p>",
+            "updateAt": 1755697547,
+            "movieCount": 37,
+            "favoriteCount": 44
+        },
+        {
+            "id": 8,
+            "title": "🔞无码片单",
+            "desc": "<p>裤子都脱了，拒绝看马赛克！！！无码自然神<\/p>",
+            "updateAt": 1765603422,
+            "movieCount": 253,
+            "favoriteCount": 18
+        },
+        {
+            "id": 16,
+            "title": "历届金鸡儿奖入围\/获奖影片",
+            "desc": "<p>既有学术化的分析，也有对大众对作品的顶级认可。这里不只有压抑的性欲，更有JAV作为电影独特的魅力，每一部影片都是生理与心理的顶级享受<\/p>",
+            "updateAt": 1752211194,
+            "movieCount": 63,
+            "favoriteCount": 16
+        },
+        {
+            "id": 85,
+            "title": "颜值至上S02",
+            "desc": "<p>颜值即正义第二季，兄弟们点点收藏谢谢<\/p>",
+            "updateAt": 1763885086,
+            "movieCount": 71,
+            "favoriteCount": 15
+        },
+        {
+            "id": 2,
+            "title": "护士\/秘书\/性欲処理\/性欲处理",
+            "desc": "<p>好想被护士、执行官等狠狠解决我的性欲啊！！！<\/p>",
+            "updateAt": 1757427234,
+            "movieCount": 49,
+            "favoriteCount": 14
+        },
+        {
+            "id": 39,
+            "title": "N哥精选第一季 | 倾向优先级:演技 > 大胸 > 丝袜 > 苗条 > 漂亮",
+            "desc": "<p>倾向优先级:演技 &gt; 大胸 &gt; 丝袜 &gt; 苗条 &gt; 漂亮<\/p><p>本人看片喜欢四开播放,<\/p><p>不好看就关,一直选到4开都是满意的作品才静心欣赏.<\/p><p>精选亲自看过优选下来的演技最好片单<\/p>",
+            "updateAt": 1759418689,
+            "movieCount": 18,
+            "favoriteCount": 13
+        },
+        {
+            "id": 17,
+            "title": "fc淘金片单",
+            "desc": "<p>fc系列小众淘金，露脸系<\/p>",
+            "updateAt": 1760528367,
+            "movieCount": 115,
+            "favoriteCount": 12
+        },
+        {
+            "id": 49,
+            "title": "如电影一般的纯爱",
+            "desc": "<p>剧情、纯爱<\/p><p>如电影一般的剧情以及部分纯爱<\/p>",
+            "updateAt": 1751989255,
+            "movieCount": 14,
+            "favoriteCount": 11
+        },
+        {
+            "id": 68,
+            "title": "颜值至上S01",
+            "desc": "<p>颜值即正义（点点收藏啊xdm）<\/p>",
+            "updateAt": 1763884967,
+            "movieCount": 70,
+            "favoriteCount": 10
+        },
+        {
+            "id": 10,
+            "title": "白馒头",
+            "desc": "<p>白是真白，小心有毒<\/p>",
+            "updateAt": 1767713483,
+            "movieCount": 26,
+            "favoriteCount": 10
+        },
+        {
+            "id": 63,
+            "title": "精品中的精品",
+            "desc": "<p>美丽的金发美女开端。精品的奶子和妹子<\/p>",
+            "updateAt": 1760942643,
+            "movieCount": 18,
+            "favoriteCount": 9
+        },
+        {
+            "id": 74,
+            "title": "🔞美腿 丝袜 高跟 OL职业装  制服",
+            "desc": "<p><strong>🔞丝袜 高跟 OL职业装 制服<\/strong><\/p><p><br><\/p><p><strong>喜歡的求收藏<\/strong><\/p>",
+            "updateAt": 1767166371,
+            "movieCount": 262,
+            "favoriteCount": 8
+        },
+        {
+            "id": 30,
+            "title": "重生之我在日本叫结成（颜值即正义）",
+            "desc": "<p>大家也肯定会很疑惑，凭什么这桃之助一般的角色，吃这么细，这资源可比蓝井优太好不要太多对吧？<\/p><p>作为一个九零后，结哥可谓是天天命犯桃花：<\/p><p>搬个家，邻居是梦乃爱华。上个学，老师是枫哥，打个工，同事是三上悠亚，谈个恋爱，小姨子是蝶可怜...<\/p><p>该死的结哥可谓是天天不重样啊！<\/p>",
+            "updateAt": 1751285214,
+            "movieCount": 109,
+            "favoriteCount": 8
+        },
+        {
+            "id": 9,
+            "title": "剧情，演技派精选",
+            "desc": "<p>本人喜欢的片单分享，都是偏向演技和制服不错的，剧情偏向于能激发保护欲的<\/p>",
+            "updateAt": 1750147848,
+            "movieCount": 68,
+            "favoriteCount": 8
+        },
+        {
+            "id": 81,
+            "title": "催眠",
+            "desc": "<p>催眠 洗脑 精神操控 常识改变<\/p>",
+            "updateAt": 1755102321,
+            "movieCount": 32,
+            "favoriteCount": 7
+        },
+        {
+            "id": 59,
+            "title": "[企划系列] 尾随迷奸系列",
+            "desc": "<p>尾随女孩，迷药，春药，强奸系列。腹肌男优，脸部打码。<\/p><p><br><\/p><p>主演男优：矢野慎二<\/p><p><br><\/p><p>缺失资源<\/p><p>529STCV-547<\/p><p>529STCV-510<\/p><p>529STCV-533<\/p><p><br><\/p><p>529STCV-564<\/p><p>529STCV-551<\/p><p>529STCV-546<\/p><p>529STCV-542<\/p><p><br><\/p><p>774VRNC-002<\/p><p>774VRNC-003<\/p>",
+            "updateAt": 1756629319,
+            "movieCount": 18,
+            "favoriteCount": 6
+        },
+        {
+            "id": 20,
+            "title": "增加会所、桑拿实战能力，按摩、推油、沙龙、美容院类，实在受不了..",
+            "desc": "<p>沙龙 按摩 推油  精油+点媚药~~~去了会所才知道爽啊！！！！<\/p><p>大佬们点点发财的大手， 收藏一波，谢谢<\/p>",
+            "updateAt": 1764031111,
+            "movieCount": 29,
+            "favoriteCount": 6
+        },
+        {
+            "id": 53,
+            "title": "N哥精选第二季 | XP倾向优先级:演技 > 大胸 > 丝袜 > 苗条 > 颜值",
+            "desc": "<p>XP倾向优先级依然是 : 演技 &gt; 大胸 &gt; 丝袜 &gt; 苗条 &gt; 颜值<\/p><p>本人看片喜欢四开播放,<\/p><p>不好看就关,一直选到4开都是满意的作品才静心欣赏.<\/p><p>精选亲自看过的演技最好片单.<\/p><p>这是第二季,每季精选18片<\/p>",
+            "updateAt": 1752713349,
+            "movieCount": 18,
+            "favoriteCount": 6
+        },
+        {
+            "id": 46,
+            "title": "lsp推荐系列",
+            "desc": "<p>都是群里大佬老司机们通过动图gif识别正确代码，推荐。让我先批判才推荐<\/p><blockquote>注意事项<\/blockquote><blockquote>\t•\t识别是基于我的现有知识和对女优常见造型的分析。由于图片风格多样，有些女优可能有相似的外貌或造型（如制服或偶像风格），可能存在误判。<\/blockquote><blockquote>\t•\t列出的“车牌号”是她们的代表作品，具体番号可能需要进一步确认。<\/blockquote><blockquote>\t•\t如果你需要更准确的识别或最新的作品信息，我可以帮你搜索网络或X平台上的相关内容。请告诉我是否需要进一步查找！<\/blockquote><blockquote>希望这些信息对你有用！如果有其他需求，随时告诉我。😊<\/blockquote>",
+            "updateAt": 1755500532,
+            "movieCount": 16,
+            "favoriteCount": 6
+        },
+        {
+            "id": 15,
+            "title": "口交\/颜射\/深喉",
+            "desc": "<p>最极致的口交与颜射，最疯狂的涂抹<\/p>",
+            "updateAt": 1767009932,
+            "movieCount": 86,
+            "favoriteCount": 5
+        },
+        {
+            "id": 7,
+            "title": "巨乳、后入、女上合集",
+            "desc": "<p>巨乳、后入、女上高质量合集cut<\/p>",
+            "updateAt": 1760528504,
+            "movieCount": 79,
+            "favoriteCount": 5
+        },
+        {
+            "id": 40,
+            "title": "高质量自己收集的神片！主打中出！",
+            "desc": "<p>高质量自己收集的神片！主打中出！<\/p>",
+            "updateAt": 1749923911,
+            "movieCount": 29,
+            "favoriteCount": 5
+        },
+        {
+            "id": 11,
+            "title": "小姨子的屁股一半是姐夫的",
+            "desc": "<p>想象一下在你结婚之后你的小姨子需要搬到你家来住，俗话说的好小姨子的屁股一半是姐夫的，一男二女长时间共处的情况下会发生什么呢<\/p>",
+            "updateAt": 1752890930,
+            "movieCount": 7,
+            "favoriteCount": 5
+        },
+        {
+            "id": 21,
+            "title": "精品群交，滥交， 乱交",
+            "desc": "<p>精选包括一女对多男，多女对一男，及多女对多男<\/p>",
+            "updateAt": 1750950260,
+            "movieCount": 44,
+            "favoriteCount": 5
+        },
+        {
+            "id": 82,
+            "title": "wz9394的爱好",
+            "desc": "<p>主打魔镜、ntr、以及其他特色，需要的收藏下好哥们<\/p>",
+            "updateAt": 1765704913,
+            "movieCount": 76,
+            "favoriteCount": 4
+        },
+        {
+            "id": 32,
+            "title": "垃圾屋",
+            "desc": "<p>被垃圾屋的男主绑架或者下药当成rbq最后堕落的剧情，当时看到南老师那部的时候还是蛮震撼的<\/p>",
+            "updateAt": 1749363246,
+            "movieCount": 15,
+            "favoriteCount": 4
+        },
+        {
+            "id": 33,
+            "title": "国人优选番号",
+            "desc": "<p>此番号必有国人指点<\/p>",
+            "updateAt": 1760528036,
+            "movieCount": 20,
+            "favoriteCount": 4
+        },
+        {
+            "id": 34,
+            "title": "那些年，社保的片子",
+            "desc": "<p>极品\/女主身材好\/出轨\/带中文字幕 等<\/p>",
+            "updateAt": 1750230841,
+            "movieCount": 10,
+            "favoriteCount": 4
+        },
+        {
+            "id": 66,
+            "title": "爽到爆的神片",
+            "desc": "<p>小撸怡情大撸伤身<\/p>",
+            "updateAt": 1750950280,
+            "movieCount": 67,
+            "favoriteCount": 4
+        },
+        {
+            "id": 107,
+            "title": "🏅🏅🏅JavDB热门榜（月榜）🏅🏅🏅",
+            "desc": "<p><strong>睁眼看世界，全球老司机力荐<\/strong><\/p>",
+            "updateAt": 1767431221,
+            "movieCount": 80,
+            "favoriteCount": 3
+        },
+        {
+            "id": 56,
+            "title": "肤白貌美大长腿",
+            "desc": "<p>没别的好说的，白皮肤大长腿，狠狠中出她<\/p>",
+            "updateAt": 1750174867,
+            "movieCount": 6,
+            "favoriteCount": 3
+        },
+        {
+            "id": 54,
+            "title": "COS 二次元福音",
+            "desc": "<p>老二次元了<\/p>",
+            "updateAt": 1762669904,
+            "movieCount": 38,
+            "favoriteCount": 3
+        },
+        {
+            "id": 86,
+            "title": "❤️‍🔥经典GIF出处💗",
+            "desc": "<p><strong>本片单会收集一些经典GIF出处所在的片子（可惜片单不能传gif<\/strong><\/p>",
+            "updateAt": 1764991704,
+            "movieCount": 31,
+            "favoriteCount": 3
+        },
+        {
+            "id": 5,
+            "title": "骑兵",
+            "desc": "<p>我自己喜欢的骑兵<\/p>",
+            "updateAt": 1764993247,
+            "movieCount": 5,
+            "favoriteCount": 3
+        },
+        {
+            "id": 27,
+            "title": "多次二刷的几个片子（可以小但不可以丑）",
+            "desc": "<p>颜值身材就是正义，剧情当然也不能少。<\/p>",
+            "updateAt": 1755937037,
+            "movieCount": 18,
+            "favoriteCount": 3
+        },
+        {
+            "id": 29,
+            "title": "魔镜",
+            "desc": "<p>魔镜号系列<\/p>",
+            "updateAt": 1752031795,
+            "movieCount": 14,
+            "favoriteCount": 3
+        },
+        {
+            "id": 76,
+            "title": "周年記念大感謝スペシャル",
+            "desc": "🛠️💡【周年纪念 · 匠心之作】💡🛠️<p>🔧 技术与艺术的完美融合<\/p><p>📸 每一帧都是经典<\/p><p>🎬 一场跨时代的视觉回顾！<\/p>",
+            "updateAt": 1755535102,
+            "movieCount": 14,
+            "favoriteCount": 3
+        },
+        {
+            "id": 4,
+            "title": "年少不知阿姨好，错把少女当成宝",
+            "desc": "<p>还是人妻的滋味更好<\/p>",
+            "updateAt": 1761897822,
+            "movieCount": 15,
+            "favoriteCount": 3
+        },
+        {
+            "id": 24,
+            "title": "精品姐姐",
+            "desc": "<p>就是好看<\/p>",
+            "updateAt": 1760942511,
+            "movieCount": 16,
+            "favoriteCount": 3
+        },
+        {
+            "id": 51,
+            "title": "剧情",
+            "desc": "<p>自己留存<\/p>",
+            "updateAt": 1750085393,
+            "movieCount": 6,
+            "favoriteCount": 2
+        },
+        {
+            "id": 60,
+            "title": "贫乳是稀有价值！",
+            "desc": "<p><strong>貧乳はステータスだ、希少価値だ！<\/strong><\/p>",
+            "updateAt": 1764255460,
+            "movieCount": 21,
+            "favoriteCount": 2
+        },
+        {
+            "id": 75,
+            "title": "N哥精选第三季 | XP倾向优先级:演技 > 大胸 > 丝袜 > 苗条 > 颜值",
+            "desc": "<p>XP倾向优先级依然是 : 演技 &gt; 大胸 &gt; 丝袜 &gt; 苗条 &gt; 颜值<\/p><p>本人看片喜欢四开播放,<\/p><p>不好看就X掉,一直选到4开都是满意的作品才静心欣赏.<\/p><p>精选亲自看过的演技最好片单.<\/p><p>这是第三季,每季精选18片<\/p>",
+            "updateAt": 1759418776,
+            "movieCount": 18,
+            "favoriteCount": 2
+        },
+        {
+            "id": 12,
+            "title": "个人喜欢的影片分享",
+            "desc": "<p>颜值是最低要求，个人分享共赏，拒绝封面照骗。<\/p>",
+            "updateAt": 1758623471,
+            "movieCount": 18,
+            "favoriteCount": 2
+        },
+        {
+            "id": 90,
+            "title": "自用",
+            "desc": "<p>自用<\/p>",
+            "updateAt": 1769058334,
+            "movieCount": 194,
+            "favoriteCount": 2
+        },
+        {
+            "id": 70,
+            "title": "双飞片单",
+            "desc": "<p>谁不喜欢双飞呢，你说是吧<\/p>",
+            "updateAt": 1752912322,
+            "movieCount": 2,
+            "favoriteCount": 2
+        },
+        {
+            "id": 23,
+            "title": "颜值\/实用性",
+            "desc": "<p>高颜值老师倾情演绎，让你口吐白沫<\/p>",
+            "updateAt": 1749363171,
+            "movieCount": 8,
+            "favoriteCount": 2
+        },
+        {
+            "id": 94,
+            "title": "FC2嫩妹无码",
+            "desc": "<p><strong>只收藏能硬的起来的无码嫩妹，不看剧情演技<\/strong><\/p>",
+            "updateAt": 1760339749,
+            "movieCount": 9,
+            "favoriteCount": 2
+        },
+        {
+            "id": 42,
+            "title": "便利店、巨乳",
+            "desc": "<p>便利站场景、巨乳演员<\/p>",
+            "updateAt": 1751769122,
+            "movieCount": 14,
+            "favoriteCount": 2
+        },
+        {
+            "id": 41,
+            "title": "电车、痴汉、巨乳",
+            "desc": "<p>主打一个刺激<\/p>",
+            "updateAt": 1756299427,
+            "movieCount": 16,
+            "favoriteCount": 2
+        },
+        {
+            "id": 77,
+            "title": "【精品】大奶着衣系列",
+            "desc": "<p>仅代表个人口味，喜欢欣赏带着bra被干的，赤条条的大部分觉得索然无味。<\/p>",
+            "updateAt": 1762791088,
+            "movieCount": 8,
+            "favoriteCount": 1
+        }
+    ]
+}

@@ -1,0 +1,58 @@
+curl ^"https://picix.us/api/Users/listPaidResouces?page=1^&type=movies^" ^
+  -H ^"accept: application/json, text/plain, */*^" ^
+  -H ^"accept-language: en-GB,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6^" ^
+  -H ^"authorization: <redacted>^" ^
+  -b ^"cf_clearance=<redacted>^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://picix.us/Users/PaidResources/movies^" ^
+  -H ^"sec-ch-ua: ^\^"Not(A:Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"144^\^", ^\^"Google Chrome^\^";v=^\^"144^\^"^" ^
+  -H ^"sec-ch-ua-arch: ^\^"x86^\^"^" ^
+  -H ^"sec-ch-ua-bitness: ^\^"64^\^"^" ^
+  -H ^"sec-ch-ua-full-version: ^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-full-version-list: ^\^"Not(A:Brand^\^";v=^\^"8.0.0.0^\^", ^\^"Chromium^\^";v=^\^"144.0.7559.60^\^", ^\^"Google Chrome^\^";v=^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-model: ^\^"^\^"^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-ch-ua-platform-version: ^\^"19.0.0^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36^"
+
+
+{
+    "success": true,
+    "msg": "获取已购买资源",
+    "data": [
+        {
+            "id": 21185,
+            "title": "SSNI-624 3年前に寿退社した出戻り元上司を出張先ホテルで3日間ずっと犯し続けた記録 星宮一花",
+            "cover": "https:\/\/img.picix.us\/77\/775d0ec0336be9af5d240da4d0b3f5d324beb3dd.jpg",
+            "releaseDate": "2019-11-19"
+        },
+        {
+            "id": 36648,
+            "title": "FC2-4500783 【初撮り】【顔出し】 某有名ジムに通う尻軽そうな自称トレーナーの田舎む..す..め。鍛え抜かれた細ムチなカラダが絶妙にエロい！膣圧抜群、未処理マンコに勝手に中出し。",
+            "cover": "https:\/\/img.picix.us\/e0\/e086268d759ecd5c3eb1189820edbf2a4bf803ce.jpg",
+            "releaseDate": "2024-07-15"
+        },
+        {
+            "id": 75180,
+            "title": "SONE-760 いつもと同じ通勤電車。いつもの見慣れた景色。 この女に出会うまで。 初老リーマン、定年間近にして、痴●狂い。 楓ふうあ （BOD）",
+            "cover": "https:\/\/img.picix.us\/7b\/7b596e56ce16fddfe90ad96edc231bbde34c7fa1.jpg",
+            "releaseDate": "2025-06-20"
+        },
+        {
+            "id": 77525,
+            "title": "SONE-785 新人スポーツキャスターは局から人気スポーツ選手にあてがわれても断れず…力まかせのネジ込みピストンで死ぬほどイカされる。 楓ふうあ （BOD）",
+            "cover": "https:\/\/img.picix.us\/cf\/cfde946f857f1fe7baf86cf8cc1cfb5f226e429d.jpg",
+            "releaseDate": "2025-07-18"
+        },
+        {
+            "id": 34334,
+            "title": "SSNI-987 ど田舎の夏はヤルことがなくて隣の美人奥さんの誘惑に乗っかり毎日じっとり汗だく交尾 葵つかさ",
+            "cover": "https:\/\/img.picix.us\/24\/245e01dc1bc80fd9aba4fcc3542b48c417533cbd.jpg",
+            "releaseDate": "2021-02-07"
+        }
+    ]
+}

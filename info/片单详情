@@ -1,0 +1,300 @@
+curl ^"https://picix.us/api/Movies/getMovieList?listId=1^" ^
+  -H ^"accept: application/json, text/plain, */*^" ^
+  -H ^"accept-language: en-GB,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6^" ^
+  -H ^"authorization: <redacted>^" ^
+  -b ^"cf_clearance=<redacted>^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://picix.us/MovieList/Detail/1^" ^
+  -H ^"sec-ch-ua: ^\^"Not(A:Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"144^\^", ^\^"Google Chrome^\^";v=^\^"144^\^"^" ^
+  -H ^"sec-ch-ua-arch: ^\^"x86^\^"^" ^
+  -H ^"sec-ch-ua-bitness: ^\^"64^\^"^" ^
+  -H ^"sec-ch-ua-full-version: ^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-full-version-list: ^\^"Not(A:Brand^\^";v=^\^"8.0.0.0^\^", ^\^"Chromium^\^";v=^\^"144.0.7559.60^\^", ^\^"Google Chrome^\^";v=^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-model: ^\^"^\^"^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-ch-ua-platform-version: ^\^"19.0.0^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36^"
+
+
+
+
+
+{
+    "success": true,
+    "msg": "获取片单详情",
+    "data": {
+        "id": 1,
+        "title": "一切开干就脱丝袜的影片均为封面诈骗",
+        "desc": "<p>拒绝封面丝袜诈骗，迎接高含量丝袜片<\/p>",
+        "updateAt": 1755697547,
+        "movieCount": 37,
+        "favoriteCount": 44,
+        "isAdmin": false,
+        "isFavorite": false,
+        "list": [
+            {
+                "reason": "<p><span>痴汉部分有多视角，全程高含量连裤袜，还有连裤袜伪装的吊带袜，枫哥颜值依旧在线<\/span><\/p>",
+                "id": 75180,
+                "title": "SONE-760 いつもと同じ通勤電車。いつもの見慣れた景色。 この女に出会うまで。 初老リーマン、定年間近にして、痴●狂い。 楓ふうあ （BOD）",
+                "cover": "https:\/\/img.picix.us\/7b\/7b596e56ce16fddfe90ad96edc231bbde34c7fa1.jpg",
+                "releaseDate": "2025-06-20"
+            },
+            {
+                "reason": "<p>你必须让佐山爱给你当一次老师，半自动老师！<\/p>",
+                "id": 46647,
+                "title": "WAAA-440 悩殺ムチムチ太もも脚フェ痴女教師 ドMチ〇ポをイジくり焦らして杭打ち中出しFUCK 佐山愛",
+                "cover": "https:\/\/img.picix.us\/d1\/d184c382c6dedb99c895b0d69babba247a83405d.jpg",
+                "releaseDate": "2024-09-27"
+            },
+            {
+                "reason": "<p>无敌，不喜欢脱丝袜的女同事，出差就是要干一花<\/p>",
+                "id": 21185,
+                "title": "SSNI-624 3年前に寿退社した出戻り元上司を出張先ホテルで3日間ずっと犯し続けた記録 星宮一花",
+                "cover": "https:\/\/img.picix.us\/77\/775d0ec0336be9af5d240da4d0b3f5d324beb3dd.jpg",
+                "releaseDate": "2019-11-19"
+            },
+            {
+                "reason": "<p>喜欢穿丝袜的明理做邻居什么含金量不用我说了吧？老婆孩子还出去旅游了！<\/p>",
+                "id": 5775,
+                "title": "IPX-633 「もう射精してるってばぁ！」状態でもムレムレ汗だくで痴女ってくる義理姉 明里つむぎ",
+                "cover": "https:\/\/img.picix.us\/9d\/9d5e7bf7cc1c92faa262dc6e8077d9938d5c7983.jpg",
+                "releaseDate": "2021-03-13"
+            },
+            {
+                "reason": "<p>年轻靓丽喜欢穿漂亮过膝袜的偶像就是好偶像<\/p><p><br><\/p>",
+                "id": 74869,
+                "title": "MUKC-094 清楚系地下アイドルと裏営業で繋がるオフパコ乱交撮影会。 推してくれるなら無制限ナマ中出し放題な僕たちの痴女天使様。 虹村ゆみ",
+                "cover": "https:\/\/img.picix.us\/f8\/f8d0f4438670fff31f4cb9d0bdd01b8813da49ab.jpg",
+                "releaseDate": "2025-06-13"
+            },
+            {
+                "reason": "<p>各种长相类型穿黑丝好像都不错，包括地雷妹<\/p>",
+                "id": 68110,
+                "title": "GVH-579 黒パンスト痴女のコスプレ淫語責め 松本いちか",
+                "cover": "https:\/\/img.picix.us\/3a\/3a6b1033eb7f9841305003db94e890a773d9dbbf.jpg",
+                "releaseDate": "2023-09-16"
+            },
+            {
+                "reason": "<p>来点delay妹长相，五指袜，这个足控属性有点高<\/p>",
+                "id": 18218,
+                "title": "DASS-492 男をダメにする美脚堪能。甘すぎる極上足フェティスイートルーム。蒸れパンスト神聖おみ足でペニス挟撃コキシコぎゅむゥの極ズリ射精焦らし。 松本いちか",
+                "cover": "https:\/\/img.picix.us\/6a\/6a0674b2f8c4d841df7704978eb7f65e200f83a5.jpg",
+                "releaseDate": "2024-11-08"
+            },
+            {
+                "reason": "<p>看多了连裤袜油亮袜，不知道你们懂不懂堆堆袜和过膝袜啊？这些袜子应该也算广义丝袜？<\/p>",
+                "id": 64763,
+                "title": "YMDS-165 シロウト観察 モニタリング 穏やかこなっちゃんの真摯S！本人登場＆憧れの生ハメ撮りで夢のDVD鑑賞店編 柏木こなつ",
+                "cover": "https:\/\/img.picix.us\/e5\/e5cbe37d0ac140e7716009fc3f938f571a1bb189.jpg",
+                "releaseDate": "2024-06-01"
+            },
+            {
+                "reason": "<p>高产新人，看够了精致脸看看少女脸，看够了油亮黑丝来看看朴素白丝<\/p>",
+                "id": 61497,
+                "title": "UFD-076 白衣の天使と性交 柏木こなつ",
+                "cover": "https:\/\/img.picix.us\/03\/03cc4e26b7cedb64446d73e38389dca6a9993244.jpg",
+                "releaseDate": "2025-02-28"
+            },
+            {
+                "reason": "<p>经典办公室女上司诱惑系列，无内丝袜，森日向子应该是这个系列里颜值最能打的之一了<\/p>",
+                "id": 23032,
+                "title": "MIAB-043 僕の性癖に刺さる美脚女上司のノーパン直穿きパンスト挑発に負け上から目線で痴女られ20発射精し絶賛ドはまり中 森日向子",
+                "cover": "https:\/\/img.picix.us\/8d\/8d25589340cda2fc5c923c6cb68ed9672d7a9d1d.jpg",
+                "releaseDate": "2023-12-15"
+            },
+            {
+                "reason": "<p>开档丝袜，内裤外穿，肉丝黑丝都有，还有朋友们喜欢的煮饺，但是有点死亡调光<\/p>",
+                "id": 73942,
+                "title": "WAAA-528 悩殺パンスト美脚で甘サド爆ヌキ！ 五日市芽依",
+                "cover": "https:\/\/img.picix.us\/03\/030c2368b07b82682d980dbfdf9731e9b1762a71.jpg",
+                "releaseDate": "2025-05-30"
+            },
+            {
+                "reason": "<p>双人主观色情服务，群友那剽窃的，含量极高，丝袜还有虾线，爽！<\/p>",
+                "id": 72003,
+                "title": "PFES-107 楓ふうあ170cm 明日葉みつは175cm 合計345cmの長身美女のWパンストで挟撃ロック！身動き出来ずにイカせられちゃう5コーナー",
+                "cover": "https:\/\/img.picix.us\/38\/383b576ef168b82eb2e6d549b20072faea712774.jpg",
+                "releaseDate": "2025-04-25"
+            },
+            {
+                "reason": "<p>来点可爱系的也不错，但是丝袜含量不高<\/p>",
+                "id": 26717,
+                "title": "MIDA-085 引きこもりヤンデレ地雷生徒を野外に連れ出したらラブホテルに連れ込まれチ〇ポが狂うまで痴女られて人生破滅した僕 七沢みあ",
+                "cover": "https:\/\/img.picix.us\/6a\/6a732019655704b1ebf4a5000490c4b7a2f5a925.jpg",
+                "releaseDate": "2025-03-14"
+            },
+            {
+                "reason": "<p>反光白丝好好好，美女护士好好好<\/p>",
+                "id": 38297,
+                "title": "SSNI-830 股下3センチ美脚タイトミニスカナースの誘惑 星宮一花",
+                "cover": "https:\/\/img.picix.us\/d5\/d53a5af96c9bdc8f693ef34ab4d19a3b6fab5cad.jpg",
+                "releaseDate": "2020-07-19"
+            },
+            {
+                "reason": "<p>办公室诱惑，中年女同事<\/p>",
+                "id": 13579,
+                "title": "LULU-060 深夜の社内で残業中の人妻女上司と2人きり！向かいの席からパンチラしてくるいたずらな美脚上司の誘惑に乗ったら何度もサービス射精させられた。 月乃ルナ",
+                "cover": "https:\/\/img.picix.us\/2f\/2f6f2fa80f5b15f342d5a26d990c84e233afb60c.jpg",
+                "releaseDate": "2021-02-28"
+            },
+            {
+                "reason": "<p>改名之前的有菜，死亡黄色调光<\/p>",
+                "id": 56598,
+                "title": "SSNI-497 新任なのに常にパンスト挑発してくる小悪魔な美脚女教師 橋本ありな",
+                "cover": "https:\/\/img.picix.us\/7c\/7c91fea4d1bf46eb69b0b1ec4dc9fc5c27d2c438.jpg",
+                "releaseDate": "2019-06-19"
+            },
+            {
+                "reason": "<p>这个丝袜质量一般，有黑点，不如国产<\/p>",
+                "id": 6394,
+                "title": "IPX-954 パンスト美脚でシャイなチ○ポを誘惑する美人女教師のわいせつ個人授業 明里つむぎ",
+                "cover": "https:\/\/img.picix.us\/aa\/aab5a91a3e9900f72c2be6b987f3fcb9b95464ac.jpg",
+                "releaseDate": "2022-11-08"
+            },
+            {
+                "reason": "<p>我喜欢的喜欢穿丝袜的人民教师(日本人民也是人民<\/p>",
+                "id": 6635,
+                "title": "IPZZ-037 パンストマニアの標的になった美白美脚女教師 白肌の美脚ももと美尻！狂気的ストーカーの粘着孕ませ性交！！ 明里つむぎ",
+                "cover": "https:\/\/img.picix.us\/73\/73fc9ce4e2246794bd6ec8425fe3d438a4844d23.jpg",
+                "releaseDate": "2023-05-09"
+            },
+            {
+                "reason": "<p>明理老师知性美，加传统丝袜主观视角<\/p>",
+                "id": 6978,
+                "title": "IPZZ-451 【完全主観】予約1年待ち！神美脚スレンダー美女が金玉がカラになるまでヌイてくれる超高級メンズエステ 明里つむぎ",
+                "cover": "https:\/\/img.picix.us\/cc\/cc9f4a76aa977600c768b5dbe1df0d9debd557a6.jpg",
+                "releaseDate": "2025-01-10"
+            },
+            {
+                "reason": "<p>空姐好，穿丝袜的一花空姐好<\/p>",
+                "id": 16658,
+                "title": "SSIS-437 飛べなくなった客室乗務員は金持ち親父のヤミツキ肉便器 星宮一花",
+                "cover": "https:\/\/img.picix.us\/2c\/2cba5878fd99e7f3e17e41cf05039ab7b8d811bb.jpg",
+                "releaseDate": "2022-06-24"
+            },
+            {
+                "reason": "<p>old school丝袜款式，搭配古典长相<\/p>",
+                "id": 23809,
+                "title": "START-286 甘く囁きながら美脚を絡ませてイキ我慢する男の反応を愉しむ極上の美脚アロマエステサロン 本庄鈴",
+                "cover": "https:\/\/img.picix.us\/0f\/0f75259add373f8d8e16bdf1a3d866556bdded87.jpg",
+                "releaseDate": "2025-03-11"
+            },
+            {
+                "reason": "<p>主观视角性服务，着装带劲<\/p>",
+                "id": 10959,
+                "title": "MIDV-850 美脚長身ニーハイのスキマからぷりぷり美マンでくっぱぁおもてなし中出し風俗タワー 新ありな",
+                "cover": "https:\/\/img.picix.us\/0d\/0d36d1c73aa8265df0a529d883bf2937cc058062.jpg",
+                "releaseDate": "2024-09-13"
+            },
+            {
+                "reason": "<p>水卜樱确实是白，大奶+cosplay<\/p>",
+                "id": 50444,
+                "title": "MIDV-718 いつもクラスでボッチの地味っこ同級生は月に一度の卑猥コスでオフパコ配信やっている人気神乳コスプレイヤーだった。 水卜さくら",
+                "cover": "https:\/\/img.picix.us\/69\/69a84a8af0e9bb27ffdab1ecbf998dade4f9fc00.jpg",
+                "releaseDate": "2024-05-17"
+            },
+            {
+                "reason": "<p>敏感体质题材表演一般，但是丝袜<\/p>",
+                "id": 71081,
+                "title": "MIDA-117 大嫌いな変態上司の乳首セクハラで敏感体質がバレた私…何度もチクイキさせられ粘着こねくり中出しSEXの虜に… 新ありな",
+                "cover": "https:\/\/img.picix.us\/40\/406a6ef0bf71239e37bbf71131405d9a2b63f0a6.jpg",
+                "releaseDate": "2025-04-11"
+            },
+            {
+                "reason": "<p>爱岗敬业森老师激发学生上学欲望<\/p>",
+                "id": 17949,
+                "title": "MIAB-317 不登校オタク生徒をノーパンデカ尻で誘惑し蒸れたパンスト美脚アナルを嗅がせて痴女る熱ケツ女教師の生ハメ20発生活指導 森日向子 （BOD）",
+                "cover": "https:\/\/img.picix.us\/ba\/ba5e100f5eb603cb1aedb37fce6d0e5bbaa048e4.jpg",
+                "releaseDate": "2024-09-13"
+            },
+            {
+                "reason": "<p>丝袜橘老师职场的爱恨纠葛<\/p>",
+                "id": 67356,
+                "title": "MIAB-128 パンスト淫臭フェロモン女上司はアナルくぱくぱ見せつけて僕を誘惑するデカ尻ビッ痴 橘メアリー",
+                "cover": "https:\/\/img.picix.us\/96\/96eef0cb1f53abfcba7cb36605684970f5331ab8.jpg",
+                "releaseDate": "2024-03-01"
+            },
+            {
+                "reason": "<p>办公室勾引，丝袜款式奇特<\/p>",
+                "id": 69387,
+                "title": "MIAA-548 見せつけOCS尻で即ハメオフィス不倫を持ちかける誘惑女上司 篠田ゆう",
+                "cover": "https:\/\/img.picix.us\/6e\/6e10fff256e87f84bd8c8be0df82b1152e14417f.jpg",
+                "releaseDate": "2021-12-17"
+            },
+            {
+                "reason": "<p>我愿意称之为筱田优巅峰时期作品<\/p>",
+                "id": 44589,
+                "title": "MESU-103 おばさん女上司と残業セックス中出しオフィス 篠田ゆう",
+                "cover": "https:\/\/img.picix.us\/46\/460911f34ac4f2526a419e58569997edc66899b1.jpg",
+                "releaseDate": "2022-12-08"
+            },
+            {
+                "reason": "<p>连体衣，美乳，好！<\/p>",
+                "id": 72821,
+                "title": "IPZZ-546 「桜空もも」とお泊り中出し連発デートH 24時間止め処なく痴女られイキ続けた僕",
+                "cover": "https:\/\/img.picix.us\/cc\/cca7ff6d4a5a6de2fbf5137c999f923e85978988.jpg",
+                "releaseDate": "2025-05-09"
+            },
+            {
+                "reason": "<p>玛丽老师办公室女性<\/p>",
+                "id": 11109,
+                "title": "WAAA-374 無防備な爆弾パンスト尻に我慢できず、女上司に暴走バック中出ししてしまった僕 橘メアリー",
+                "cover": "https:\/\/img.picix.us\/d5\/d5114646131bdeb48581e162fed8184d0d6f8ccc.jpg",
+                "releaseDate": "2024-05-03"
+            },
+            {
+                "reason": "<p>一花老师，这个调光不错<\/p>",
+                "id": 36326,
+                "title": "SSIS-465 僕の性癖にドストライクなスレンダー美人教師 艶やかな黒パンストと美脚ホールド＆足じゃくりで何度も射精させられた。 星宮一花",
+                "cover": "https:\/\/img.picix.us\/9b\/9b34b01c78d71109d579237cd4ba6943e59d5b16.jpg",
+                "releaseDate": "2022-07-22"
+            },
+            {
+                "reason": "<p>玛丽老师丝袜作品<\/p>",
+                "id": 59057,
+                "title": "ROYD-175 弟ガチ恋の巨乳姉に毎日チ○ポがふやける程甘やかされるイチャラブ中出し生活。 橘メアリー",
+                "cover": "https:\/\/img.picix.us\/9e\/9e088562dce4db95ab2d162809b73842da6bc176.jpg",
+                "releaseDate": "2024-05-24"
+            },
+            {
+                "reason": "<p>无敌多人，丝袜挤脸<\/p>",
+                "id": 33298,
+                "title": "PFES-081 働く美脚お姉さんの黒タイツハーレム スベスベタイツ脚の挟撃ロックで身動き出来ずに射精させられる僕。",
+                "cover": "https:\/\/img.picix.us\/db\/dbb4c9efa8f6edd725aefbb69febdcf099ea2aeb.jpg",
+                "releaseDate": "2024-03-29"
+            },
+            {
+                "reason": "<p>好，袜子又亮又好<\/p>",
+                "id": 26751,
+                "title": "MIAB-462 「社員の皆さん、ヌキの時間ですよ」 業務効率上げる足コキマネジメントで痴女る美脚秘書のキンタマ搾汁スケジュール生ハメ管理20発 森日向子 （BOD）",
+                "cover": "https:\/\/img.picix.us\/3a\/3ab9cddf420f99387c937f16c1fa4259050e090e.jpg",
+                "releaseDate": "2025-03-14"
+            },
+            {
+                "reason": "<p>兔女郎系列，丝袜很新奇，没见过<\/p>",
+                "id": 6930,
+                "title": "IPZZ-319 オッパイ丸出し オマ○コ中出し 射精無制限 逆バニー風俗パラダイス 桜空もも",
+                "cover": "https:\/\/img.picix.us\/00\/0038f4ae02ff6562911ebc2c07a5e130e92b857b.jpg",
+                "releaseDate": "2024-07-05"
+            },
+            {
+                "reason": "<p>高丝袜含量樱空桃老师早期作品<\/p>",
+                "id": 54755,
+                "title": "IPX-061 Gカップ巨乳RQ桜空もも トロけるような甘い誘惑",
+                "cover": "https:\/\/img.picix.us\/a6\/a632cf679ecb3faab9084a563a177a0b34c2566e.jpg",
+                "releaseDate": "2017-12-09"
+            },
+            {
+                "reason": "<p>较好的面容，持久的丝袜内容<\/p>",
+                "id": 10984,
+                "title": "MIDV-890 妻がいるのに美脚CAのパンスト誘惑に負け小悪魔足コキで擦り堕ち15発吐精した黒艶脚淫NTR 宮下玲奈 （BOD）",
+                "cover": "https:\/\/img.picix.us\/44\/4480cba39527827333d7aad0198e488d44ae1573.jpg",
+                "releaseDate": "2024-10-11"
+            }
+        ]
+    }
+}

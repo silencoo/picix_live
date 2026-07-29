@@ -1,0 +1,40 @@
+# 配置文件 - 包含敏感信息
+config.py
+.env
+.env.*
+!.env.example
+
+# 数据目录
+unlock_data/
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv/
+.venv-cloak/
+
+# CloakBrowser 二进制缓存（体积较大）
+.cloakbrowser-cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志文件
+*.log
+
+# 临时文件与本地备份
+*.bak
+*.backup
+*.old
+*.tmp

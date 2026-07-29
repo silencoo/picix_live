@@ -1,0 +1,182 @@
+curl ^"https://picix.us/api/Movies/detail?movieId=75180^" ^
+  -H ^"accept: application/json, text/plain, */*^" ^
+  -H ^"accept-language: en-GB,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6^" ^
+  -H ^"authorization: <redacted>^" ^
+  -b ^"cf_clearance=<redacted>^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://picix.us/Movies/Detail/75180^" ^
+  -H ^"sec-ch-ua: ^\^"Not(A:Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"144^\^", ^\^"Google Chrome^\^";v=^\^"144^\^"^" ^
+  -H ^"sec-ch-ua-arch: ^\^"x86^\^"^" ^
+  -H ^"sec-ch-ua-bitness: ^\^"64^\^"^" ^
+  -H ^"sec-ch-ua-full-version: ^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-full-version-list: ^\^"Not(A:Brand^\^";v=^\^"8.0.0.0^\^", ^\^"Chromium^\^";v=^\^"144.0.7559.60^\^", ^\^"Google Chrome^\^";v=^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-model: ^\^"^\^"^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-ch-ua-platform-version: ^\^"19.0.0^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36^"
+
+
+{
+    "success": true,
+    "msg": "获取电影详情",
+    "data": {
+        "id": 75180,
+        "title": "SONE-760 いつもと同じ通勤電車。いつもの見慣れた景色。 この女に出会うまで。 初老リーマン、定年間近にして、痴●狂い。 楓ふうあ （BOD）",
+        "cover": "https:\/\/img.picix.us\/7b\/7b596e56ce16fddfe90ad96edc231bbde34c7fa1.jpg",
+        "releaseDate": "2025-06-20",
+        "sourceId": "SONE-760",
+        "isAdmin": false,
+        "canPlay": true,
+        "isFavorite": false,
+        "list": [
+            {
+                "folderId": 45797,
+                "files": [
+                    {
+                        "id": 48232,
+                        "filename": "SONE-760.C.mp4",
+                        "fileSize": 6455835324,
+                        "codec": "h264",
+                        "width": 1920,
+                        "height": 1080,
+                        "frameRates": 59.94,
+                        "duration": 7250.28,
+                        "progress": 0,
+                        "stream": "https:\/\/stream.picix.us:8443\/f159736a-be4b-4fee-ab9e-ab3c2f0fece3\/SONE-760.C.mp4"
+                    }
+                ]
+            }
+        ],
+        "actors": [
+            {
+                "id": 1183,
+                "name": "楓ふうあ",
+                "avatar": "https:\/\/img.picix.us\/a1\/a17ef27d43319664de1d1bdd12a6a1e462eeae44.jpg"
+            }
+        ],
+        "tags": [
+            {
+                "id": 210,
+                "name": "高潮・绝顶"
+            },
+            {
+                "id": 4,
+                "name": "单人作品"
+            },
+            {
+                "id": 71,
+                "name": "潮吹"
+            },
+            {
+                "id": 30,
+                "name": "连裤袜\/丝袜"
+            },
+            {
+                "id": 13,
+                "name": "修长体型"
+            },
+            {
+                "id": 108,
+                "name": "颜射"
+            }
+        ],
+        "screenshots": [
+            {
+                "id": 1000807,
+                "url": "https:\/\/img.picix.us\/07\/07d24ea071e12b63b63d0d539705760d7d5fe212.jpg"
+            },
+            {
+                "id": 1000808,
+                "url": "https:\/\/img.picix.us\/73\/73d2643291e77ce0a3b1a21bf7d1cfd529c295a4.jpg"
+            },
+            {
+                "id": 1000809,
+                "url": "https:\/\/img.picix.us\/01\/016fcb9f44b873d8447d60481a7542bad3cdebfe.jpg"
+            },
+            {
+                "id": 1000810,
+                "url": "https:\/\/img.picix.us\/72\/7292005290ce0b7e07cf916727b844c8be2d2b2c.jpg"
+            },
+            {
+                "id": 1000811,
+                "url": "https:\/\/img.picix.us\/1c\/1cd8d2c2410ef1b7190a6ee0b7d6063bbc5b485a.jpg"
+            },
+            {
+                "id": 1000812,
+                "url": "https:\/\/img.picix.us\/2e\/2e76cca20ddabdb28e928a7ad4c854c88544b0ed.jpg"
+            },
+            {
+                "id": 1000813,
+                "url": "https:\/\/img.picix.us\/9f\/9f3838f51f25af8762911e2c11b47074966dafe5.jpg"
+            },
+            {
+                "id": 1000814,
+                "url": "https:\/\/img.picix.us\/29\/29a964ee375b96a591d35b900f394a163d482b12.jpg"
+            },
+            {
+                "id": 1000815,
+                "url": "https:\/\/img.picix.us\/da\/dae59024026b5e71142c054b1cfa713e7c459d83.jpg"
+            },
+            {
+                "id": 1000816,
+                "url": "https:\/\/img.picix.us\/65\/6519c6fc3d64daf11bff3e239b46d251be0b0499.jpg"
+            },
+            {
+                "id": 1000817,
+                "url": "https:\/\/img.picix.us\/37\/379b4cc437eba27bce9865921cf089e5f46b3f40.jpg"
+            },
+            {
+                "id": 1000818,
+                "url": "https:\/\/img.picix.us\/7b\/7b4e5617f9772ed58d9acb3a15147e5c750c4459.jpg"
+            },
+            {
+                "id": 1000819,
+                "url": "https:\/\/img.picix.us\/4b\/4b90bba62af81552e4097420caca03ca4e7034bf.jpg"
+            },
+            {
+                "id": 1000820,
+                "url": "https:\/\/img.picix.us\/c8\/c8b36f5fa0aa55c01472e085889932cec4a2ea08.jpg"
+            },
+            {
+                "id": 1000821,
+                "url": "https:\/\/img.picix.us\/e2\/e244e85b405ca20de2efc043036bd6276778c837.jpg"
+            }
+        ],
+        "recommend": [
+            {
+                "id": 2839,
+                "listId": 111,
+                "reason": "<p>一如既往的通勤电车。一如既往看惯的风景。直到遇见这个女人。步入初老的上班族，在即将退休之际迷恋上了痴汉行为。** 枫富爱（BOD）<\/p>",
+                "title": "最受欢迎榜单"
+            },
+            {
+                "id": 2687,
+                "listId": 104,
+                "reason": "<p><br><\/p>",
+                "title": "ziyong"
+            },
+            {
+                "id": 1821,
+                "listId": 82,
+                "reason": "<p>不能没有看过电车痴汉<\/p>",
+                "title": "wz9394的爱好"
+            },
+            {
+                "id": 1488,
+                "listId": 74,
+                "reason": "<p>枫哥黑丝制服，电车痴汉<\/p>",
+                "title": "🔞美腿 丝袜 高跟 OL职业装  制服"
+            },
+            {
+                "id": 1406,
+                "listId": 1,
+                "reason": "<p><span>痴汉部分有多视角，全程高含量连裤袜，还有连裤袜伪装的吊带袜，枫哥颜值依旧在线<\/span><\/p>",
+                "title": "一切开干就脱丝袜的影片均为封面诈骗"
+            }
+        ]
+    }
+}

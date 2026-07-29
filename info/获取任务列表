@@ -1,0 +1,80 @@
+curl ^"https://picix.us/api/Tasks/list^" ^
+  -H ^"accept: application/json, text/plain, */*^" ^
+  -H ^"accept-language: en-GB,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6^" ^
+  -H ^"authorization: <redacted>^" ^
+  -b ^"cf_clearance=<redacted>^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://picix.us/Tasks^" ^
+  -H ^"sec-ch-ua: ^\^"Not(A:Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"144^\^", ^\^"Google Chrome^\^";v=^\^"144^\^"^" ^
+  -H ^"sec-ch-ua-arch: ^\^"x86^\^"^" ^
+  -H ^"sec-ch-ua-bitness: ^\^"64^\^"^" ^
+  -H ^"sec-ch-ua-full-version: ^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-full-version-list: ^\^"Not(A:Brand^\^";v=^\^"8.0.0.0^\^", ^\^"Chromium^\^";v=^\^"144.0.7559.60^\^", ^\^"Google Chrome^\^";v=^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-model: ^\^"^\^"^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-ch-ua-platform-version: ^\^"19.0.0^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36^"
+
+
+
+  {
+    "success": true,
+    "msg": "获取任务列表",
+    "data": [
+        {
+            "unique": "D_UL_1",
+            "name": "每日解锁",
+            "desc": "解锁 1 个影片",
+            "target": 1,
+            "point": 15,
+            "expiredDays": -1,
+            "process": {
+                "startAt": 1769071631,
+                "endAt": 1769097599,
+                "unique": "D_UL_1",
+                "process": 1,
+                "target": 1,
+                "point": 15,
+                "isFinish": "Y"
+            }
+        },
+        {
+            "unique": "M_UL_50",
+            "name": "每月解锁",
+            "desc": "解锁 50 个影片",
+            "target": 50,
+            "point": 640,
+            "expiredDays": 30,
+            "process": {
+                "startAt": 1769073488,
+                "endAt": 1771665488,
+                "unique": "M_UL_50",
+                "process": 1,
+                "target": 50,
+                "point": 640,
+                "isFinish": "N"
+            }
+        },
+        {
+            "unique": "M_UL_ML_20",
+            "name": "每月解锁（片单）",
+            "desc": "从片单解锁 20 个影片",
+            "target": 20,
+            "point": 100,
+            "expiredDays": 30,
+            "process": {
+                "startAt": 1769073489,
+                "endAt": 1771665489,
+                "unique": "M_UL_ML_20",
+                "process": 1,
+                "target": 20,
+                "point": 100,
+                "isFinish": "N"
+            }
+        }
+    ]
+}

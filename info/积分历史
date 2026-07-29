@@ -1,0 +1,127 @@
+curl ^"https://picix.us/api/Users/listPointHistory^" ^
+  -H ^"accept: application/json, text/plain, */*^" ^
+  -H ^"accept-language: en-GB,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6^" ^
+  -H ^"authorization: <redacted>^" ^
+  -b ^"cf_clearance=<redacted>^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://picix.us/Users/PointHistory^" ^
+  -H ^"sec-ch-ua: ^\^"Not(A:Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"144^\^", ^\^"Google Chrome^\^";v=^\^"144^\^"^" ^
+  -H ^"sec-ch-ua-arch: ^\^"x86^\^"^" ^
+  -H ^"sec-ch-ua-bitness: ^\^"64^\^"^" ^
+  -H ^"sec-ch-ua-full-version: ^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-full-version-list: ^\^"Not(A:Brand^\^";v=^\^"8.0.0.0^\^", ^\^"Chromium^\^";v=^\^"144.0.7559.60^\^", ^\^"Google Chrome^\^";v=^\^"144.0.7559.60^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-model: ^\^"^\^"^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-ch-ua-platform-version: ^\^"19.0.0^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36^"
+
+
+
+{
+    "success": true,
+    "msg": "获取积分记录",
+    "data": [
+        {
+            "timestamp": 1769076198,
+            "type": "INC",
+            "value": 15,
+            "desc": "完成任务：每日解锁",
+            "totalPoints": 1350
+        },
+        {
+            "timestamp": 1769073511,
+            "type": "DEC",
+            "value": 450,
+            "desc": "购买商品：资源轻量包",
+            "totalPoints": 1335
+        },
+        {
+            "timestamp": 1769067091,
+            "type": "DEC",
+            "value": 450,
+            "desc": "最低消费450 - 不足部分扣减",
+            "totalPoints": 1785
+        },
+        {
+            "timestamp": 1766474993,
+            "type": "DEC",
+            "value": 450,
+            "desc": "最低消费450 - 不足部分扣减",
+            "totalPoints": 2235
+        },
+        {
+            "timestamp": 1763882873,
+            "type": "DEC",
+            "value": 450,
+            "desc": "最低消费450 - 不足部分扣减",
+            "totalPoints": 2685
+        },
+        {
+            "timestamp": 1761290854,
+            "type": "DEC",
+            "value": 450,
+            "desc": "最低消费450 - 不足部分扣减",
+            "totalPoints": 3135
+        },
+        {
+            "timestamp": 1760257054,
+            "type": "INC",
+            "value": 1500,
+            "desc": "体验补偿（v1存储问题）",
+            "totalPoints": 3585
+        },
+        {
+            "timestamp": 1758698827,
+            "type": "DEC",
+            "value": 450,
+            "desc": "最低消费450 - 不足部分扣减",
+            "totalPoints": 2085
+        },
+        {
+            "timestamp": 1756106747,
+            "type": "DEC",
+            "value": 430,
+            "desc": "最低消费450 - 不足部分扣减",
+            "totalPoints": 2535
+        },
+        {
+            "timestamp": 1755980307,
+            "type": "DEC",
+            "value": 20,
+            "desc": "解锁电影：SONE-785 新人スポーツキャスターは局から人...",
+            "totalPoints": 2965
+        },
+        {
+            "timestamp": 1751128276,
+            "type": "INC",
+            "value": 5,
+            "desc": "TG群获得",
+            "totalPoints": 2985
+        },
+        {
+            "timestamp": 1750097647,
+            "type": "DEC",
+            "value": 20,
+            "desc": "解锁电影：SSNI-987 ど田舎の夏はヤルことがなくて隣の...",
+            "totalPoints": 2980
+        },
+        {
+            "timestamp": 1748617991,
+            "type": "INC",
+            "value": 2900,
+            "desc": "低保",
+            "totalPoints": 3000
+        },
+        {
+            "timestamp": 1748175173,
+            "type": "INC",
+            "value": 100,
+            "desc": "邀请码注册奖励",
+            "totalPoints": 100
+        }
+    ]
+}

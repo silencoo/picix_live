@@ -1,0 +1,11 @@
+[project]
+name = "picix-cloak-runtime"
+version = "1.0.0"
+description = "Pinned CloakBrowser runtime for Picix Cloudflare warm-up"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "cloakbrowser==0.5.2",
+]
+
+[tool.uv]
+package = false
