@@ -23,6 +23,8 @@ if not defined PICIX_ACTION (
 if /i "%PICIX_ACTION%"=="bot" goto run_bot
 if /i "%PICIX_ACTION%"=="status" goto run_status
 if /i "%PICIX_ACTION%"=="unlock" goto run_unlock
+if /i "%PICIX_ACTION%"=="plan" goto run_plan
+if /i "%PICIX_ACTION%"=="optimize" goto run_optimize
 if /i "%PICIX_ACTION%"=="token" goto run_token
 if /i "%PICIX_ACTION%"=="sync" goto run_sync
 if /i "%PICIX_ACTION%"=="help" goto usage
@@ -39,8 +41,10 @@ echo.
 echo   1. Start Telegram Bot
 echo   2. Show Picix Status
 echo   3. Run Daily Unlock
-echo   4. Check Authorization
-echo   5. Sync Locked Dependencies
+echo   4. Show Points Optimization Plan
+echo   5. Run Points Optimization
+echo   6. Check Authorization
+echo   7. Sync Locked Dependencies
 echo   0. Exit
 echo.
 if exist ".env" (
@@ -49,10 +53,12 @@ if exist ".env" (
     echo   Environment: .env not found
 )
 echo.
-choice /C 123450 /N /M "Select [1-5,0]: "
-if errorlevel 6 goto exit_menu
-if errorlevel 5 goto run_sync
-if errorlevel 4 goto run_token
+choice /C 12345670 /N /M "Select [1-7,0]: "
+if errorlevel 8 goto exit_menu
+if errorlevel 7 goto run_sync
+if errorlevel 6 goto run_token
+if errorlevel 5 goto run_optimize
+if errorlevel 4 goto run_plan
 if errorlevel 3 goto run_unlock
 if errorlevel 2 goto run_status
 if errorlevel 1 goto run_bot
@@ -78,6 +84,20 @@ uv run --locked %UV_ENV_ARGS% python auto_unlock_helper.py unlock
 set "PICIX_RESULT=%ERRORLEVEL%"
 goto action_complete
 
+:run_plan
+echo.
+echo Calculating points optimization plan...
+uv run --locked %UV_ENV_ARGS% python auto_unlock_helper.py plan
+set "PICIX_RESULT=%ERRORLEVEL%"
+goto action_complete
+
+:run_optimize
+echo.
+echo Running points optimization...
+uv run --locked %UV_ENV_ARGS% python auto_unlock_helper.py optimize
+set "PICIX_RESULT=%ERRORLEVEL%"
+goto action_complete
+
 :run_token
 echo.
 echo Checking Picix authorization...
@@ -100,11 +120,11 @@ pause
 goto menu
 
 :usage
-echo Usage: start.bat [bot^|status^|unlock^|token^|sync^|help]
+echo Usage: start.bat [bot^|status^|unlock^|plan^|optimize^|token^|sync^|help]
 exit /b 0
 
 :usage_error
-echo Usage: start.bat [bot^|status^|unlock^|token^|sync^|help]
+echo Usage: start.bat [bot^|status^|unlock^|plan^|optimize^|token^|sync^|help]
 exit /b 2
 
 :exit_menu

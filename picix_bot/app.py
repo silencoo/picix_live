@@ -1,7 +1,4 @@
-"""
-Picix 双倍轻量包法 Telegram 机器人
-集成自动化助手功能，支持查看状态、执行解锁、余额监控
-"""
+"""Picix 积分最大化 Telegram Bot。"""
 import requests
 import sys
 import io
@@ -14,6 +11,7 @@ import functools
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 # 设置标准输出为无缓冲/行缓冲模式（立即输出，解决 Windows 输出延迟问题）
 # 即使直接运行模块也能即时输出
@@ -41,6 +39,7 @@ from telegram.ext import (
 
 # 集中加载运行配置；环境变量优先于项目根目录的 config.py。
 from .settings import settings
+from .optimizer import build_optimization_plan
 
 # 导入原有助手的功能
 from auto_unlock_helper import (
@@ -54,7 +53,9 @@ from auto_unlock_helper import (
     search_movies, get_movie_detail, get_paid_movies, accept_default_tasks,
     should_unlock_from_list, accept_task, get_purchasable_packages,
     get_package_list, request_login_code, check_login_code,
-    update_authorization
+    update_authorization, get_package_info, get_package_summary,
+    build_live_optimization_plan, execute_points_optimization,
+    unlock_movies_batch
 )
 
 # 设置标准输出为UTF-8编码（仅用于命令行输出，不影响Telegram消息）
@@ -78,15 +79,6 @@ AUTH_REAUTH_TIMEOUT_SECONDS = 10 * 60
 AUTH_REAUTH_COOLDOWN_SECONDS = 10 * 60
 AUTH_REAUTH_LOCK = asyncio.Lock()
 
-def get_package_info():
-    """获取个人资源包信息"""
-    result = api_request("GET", "/Packages/listMine")
-    if result and result.get("success"):
-        packages = result.get("data", [])
-        if packages:
-            return packages[0]  # 返回第一个资源包
-    return None
-
 def buy_package(good_id):
     """购买指定资源包"""
     if good_id is None:
@@ -101,6 +93,128 @@ def buy_package(good_id):
         return False, result.get("msg", "未知错误")
     return False, "请求失败"
 
+
+def _optimizer_options():
+    return {
+        "timezone_name": settings.timezone,
+        "minimum_spend": settings.minimum_monthly_spend,
+        "package_price": settings.package_price,
+        "package_quota": settings.package_quota,
+        "spend_cycle_days": settings.spend_cycle_days,
+        "spend_trigger_day": settings.spend_trigger_day,
+        "points_reserve": settings.points_reserve,
+        "max_auto_purchases": settings.max_auto_purchases,
+        "max_auto_unlocks": settings.max_auto_unlocks,
+    }
+
+
+def _execution_options():
+    return {
+        **_optimizer_options(),
+        "allow_purchase": settings.auto_purchase,
+        "package_good_id": settings.package_good_id,
+    }
+
+
+def format_optimization_plan(plan):
+    """将纯计划对象格式化为适合 Telegram 的说明。"""
+    data = plan.to_dict() if hasattr(plan, "to_dict") else plan
+    if not data:
+        return "❌ 无法生成积分优化计划"
+
+    points = data.get("current_points")
+    points_text = "未知" if points is None else str(points)
+    cycle_end = data.get("spend_cycle_end")
+    cycle_end_text = (
+        datetime.fromtimestamp(
+            cycle_end,
+            tz=ZoneInfo(settings.timezone),
+        ).strftime("%Y-%m-%d %H:%M")
+        if cycle_end
+        else "未知"
+    )
+    lines = [
+        "🧮 **积分最大化计划**",
+        "",
+        f"当前积分: {points_text} 分",
+        (
+            f"本周期合格消费: {data.get('monthly_spend', 0)}/"
+            f"{data.get('minimum_spend', 450)} 分"
+        ),
+        (
+            f"低消周期: 第 {data.get('spend_cycle_day', 1)}/"
+            f"{settings.spend_cycle_days} 天，截止 {cycle_end_text}"
+        ),
+        f"低消缺口: {data.get('spend_shortfall', 0)} 分",
+        f"可用资源包次数: {data.get('package_remaining', 0)}",
+        "",
+        "**任务测算**",
+        (
+            f"50次任务: 还差 {data.get('monthly_remaining', 0)}，"
+            f"可靠日更机会 {data.get('monthly_daily_slots', 0)}"
+        ),
+        (
+            f"片单20次: 还差 {data.get('list_remaining', 0)}，"
+            f"可靠日更机会 {data.get('list_daily_slots', 0)}"
+        ),
+        "",
+        "**本次动作**",
+        f"每日解锁: {data.get('daily_unlocks', 0)} 次",
+        f"截止期补量: {data.get('catch_up_unlocks', 0)} 次",
+        f"购买轻量包: {data.get('packages_to_buy', 0)} 个",
+    ]
+
+    reasons = data.get("purchase_reasons") or ()
+    if reasons:
+        lines.append("购买原因: " + "；".join(reasons))
+    blockers = data.get("blocked_reasons") or ()
+    if blockers:
+        lines.extend(["", "⚠️ **限制**"])
+        lines.extend(f"• {reason}" for reason in blockers)
+
+    if (
+        data.get("spend_shortfall", 0) > 0
+        and data.get("packages_to_buy", 0) == 0
+    ):
+        lines.extend(
+            [
+                "",
+                (
+                    f"正常会在周期第 {settings.spend_trigger_day} 天前复用已有额度；"
+                    "达到兜底日仍未消费满450分时才购包。若上方有限制，则需先处理限制。"
+                ),
+            ]
+        )
+    return "\n".join(lines)
+
+
+def format_optimization_report(report):
+    plan = report.get("plan") or {}
+    lines = ["🤖 **自动积分优化结果**", ""]
+    if plan:
+        lines.append(
+            f"计划: 购包 {plan.get('packages_to_buy', 0)} 个，"
+            f"解锁 {plan.get('unlocks_now', 0)} 次"
+        )
+    purchases = report.get("purchases") or []
+    if purchases:
+        successful = sum(1 for item in purchases if item.get("success"))
+        lines.append(f"实际购包: {successful}/{len(purchases)} 个")
+    unlock_result = report.get("unlock_result") or {}
+    if unlock_result:
+        lines.append(
+            f"实际解锁: {len(unlock_result.get('successes', []))}/"
+            f"{unlock_result.get('attempted', 0)} 次"
+        )
+        if unlock_result.get("failure"):
+            lines.append(f"途中停止: {unlock_result['failure']}")
+    if not purchases and not unlock_result:
+        lines.append("当前无需执行额外动作")
+    for message in report.get("messages") or []:
+        lines.append(f"⚠️ {message}")
+    return "\n".join(lines)
+
+
 def format_status_message():
     """格式化状态消息"""
     # 获取任务状态
@@ -108,8 +222,13 @@ def format_status_message():
     if not tasks:
         return "❌ 无法获取任务状态"
 
-    # 获取资源包信息
-    package = get_package_info()
+    # 获取并汇总全部可用资源包
+    package_summary = get_package_summary()
+    package = (
+        package_summary["active"][0]["raw"]
+        if package_summary["active"]
+        else None
+    )
 
     # 获取最新积分
     point_history = get_point_history()
@@ -136,19 +255,20 @@ def format_status_message():
 
     # 资源包信息
     if package:
-        remaining = package.get("total", 0) - package.get("used", 0)
+        remaining = package_summary["remaining"]
         expired_at = package.get("expiredAt", 0)
+        msg += "📦 **资源包**\n"
+        msg += f"可用包数量: {len(package_summary['active'])}\n"
+        msg += f"总剩余次数: {remaining}\n"
         if expired_at:
             expired_date = datetime.fromtimestamp(expired_at)
             days_left = (expired_date - datetime.now()).days
-            msg += f"📦 **资源包**\n"
-            msg += f"剩余次数: {remaining}/{package.get('total', 0)}\n"
-            msg += f"过期时间: {expired_date.strftime('%Y-%m-%d %H:%M')}\n"
+            msg += f"最近一包过期: {expired_date.strftime('%Y-%m-%d %H:%M')}\n"
             msg += f"剩余天数: {days_left} 天\n\n"
-
-            # 警告提示
-            if remaining <= NOTIFICATION_THRESHOLD:
-                msg += f"⚠️ **警告**: 剩余次数不足，请及时购买资源包！\n\n"
+        else:
+            msg += "\n"
+        if remaining <= NOTIFICATION_THRESHOLD:
+            msg += f"⚠️ **警告**: 剩余次数不足，请及时购买资源包！\n\n"
     else:
         msg += "📦 **资源包**: 未找到\n\n"
 
@@ -184,25 +304,27 @@ def format_status_message():
         if monthly_task["is_finish"]:
             earned += monthly_task["point"]
         else:
-            progress = monthly_task["current"] / monthly_task["target"]
-            earned += int(monthly_task["point"] * progress)
-            potential += int(monthly_task["point"] * (1 - progress))
+            potential += monthly_task["point"]
 
     if list_task:
         if list_task["is_finish"]:
             earned += list_task["point"]
         else:
-            progress = list_task["current"] / list_task["target"]
-            earned += int(list_task["point"] * progress)
-            potential += int(list_task["point"] * (1 - progress))
+            potential += list_task["point"]
 
     msg += f"\n💰 **收益预估**\n"
     msg += f"已获得: {earned} 分\n"
     msg += f"待获得: {potential} 分\n"
-    msg += f"总计: {earned + potential} 分\n"
-    msg += f"成本: 900 分 (2次轻量包)\n"
-    net = (earned + potential) - 900
-    msg += f"净收益: {net:+d} 分"
+    msg += f"任务奖励上限: {earned + potential} 分\n"
+    msg += "注: 月任务奖励仅在达到门槛后计入\n"
+
+    plan = build_optimization_plan(
+        history=point_history,
+        packages=package_summary["all"],
+        tasks=tasks,
+        **_optimizer_options(),
+    )
+    msg += "\n" + format_optimization_plan(plan)
 
     return msg
 
@@ -429,51 +551,20 @@ async def _execute_force_unlock(message, count):
     """执行强制批量解锁"""
     await message.reply_text(f"⏳ 正在强制解锁 {count} 部影片...")
     try:
-        package = get_package_info()
-        if package:
-            remaining = package.get("total", 0) - package.get("used", 0)
-            if remaining <= 0:
-                await message.reply_text("❌ 资源包已用完，请先购买资源包！")
-                return
-            if remaining < count:
-                await message.reply_text(f"⚠️ 剩余次数不足 {count} 次，将最多尝试解锁 {remaining} 部")
-                count = remaining
-                if count <= 0:
-                    return
-
-        tasks = analyze_tasks()
-        prefer_list = should_unlock_from_list(tasks)
-
-        log = get_unlock_log()
-        unlocked_movies = set(log["unlocked_movies"])
-        paid_movies = get_all_paid_movies()
-        all_unlocked_movies = unlocked_movies | paid_movies
-
-        successes = []
-        failure_msg = None
-
-        for _ in range(count):
-            movie_id, from_list, list_id = _pick_next_movie(all_unlocked_movies, paid_movies, prefer_list)
-            if not movie_id:
-                failure_msg = "未找到可解锁的电影"
-                break
-
-            source = f"片单{list_id}" if from_list else "推荐"
-            success, error_msg = unlock_movie(movie_id, list_id=list_id if from_list else None)
-            if not success:
-                failure_msg = error_msg or "未知错误"
-                break
-
-            save_unlock_record(movie_id, from_list, list_id)
-            all_unlocked_movies.add(movie_id)
-            paid_movies.add(movie_id)
-            successes.append((movie_id, source))
-            time.sleep(0.8)
+        result = await asyncio.to_thread(unlock_movies_batch, count)
+        successes = result["successes"]
+        failure_msg = result.get("failure")
 
         if successes:
             lines = [f"✅ 强制解锁完成：成功 {len(successes)}/{count}"]
             show_count = min(10, len(successes))
-            for idx, (movie_id, source) in enumerate(successes[:show_count], 1):
+            for idx, item in enumerate(successes[:show_count], 1):
+                movie_id = item["movie_id"]
+                source = (
+                    f"片单{item.get('list_id')}"
+                    if item.get("from_list")
+                    else "推荐"
+                )
                 lines.append(f"{idx}. {movie_id} ({source})")
             if len(successes) > show_count:
                 lines.append(f"... 还有 {len(successes) - show_count} 部未展示")
@@ -529,7 +620,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     safe_username = _escape_markdown(username)
 
     welcome_msg = (
-        f"👋 欢迎 {safe_username} 使用 Picix 双倍轻量包法助手！\n\n"
+        f"👋 欢迎 {safe_username} 使用 Picix 积分最大化助手！\n\n"
         "📖 **可用命令：**\n"
         "`/status` - 查看当前状态\n"
         "`/unlock` - 执行每日解锁\n"
@@ -541,13 +632,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "`/mylist` - 查看已购电影\n"
         "`/mysearch` - 搜索已购电影\n"
         "`/history` - 查看积分历史\n"
+        "`/plan` - 查看积分最大化计划\n"
+        "`/optimize` - 立即执行积分优化\n"
         "`/reauth` - 重新获取 Picix 登录指令\n"
         "`/help` - 显示帮助信息\n"
         "`/setuser` - 添加用户到允许列表\n\n"
         "💡 **策略说明：**\n"
-        "每月购买2次资源轻量包（900分），获得60次解锁机会\n"
-        "每日解锁1个视频，确保至少20个来自片单\n"
-        "预期净收益：+290分/月\n\n"
+        "复用未过期额度，并按任务截止期自动补量\n"
+        "额度不足时按需购包；周期消费不足450分时购包替代罚扣\n\n"
         f"🆔 您的用户ID: `{user_id}`"
     )
     await update.message.reply_text(welcome_msg, parse_mode='Markdown')
@@ -1117,6 +1209,41 @@ async def point_history_command(update: Update, context: ContextTypes.DEFAULT_TY
     except Exception as e:
         await update.message.reply_text(f"❌ 获取积分历史失败: {str(e)}")
 
+
+@check_permission
+async def plan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """显示计划，不执行购买或解锁。"""
+    await update.message.reply_text("⏳ 正在计算积分最大化计划...")
+    try:
+        plan = await asyncio.to_thread(
+            build_live_optimization_plan,
+            **_optimizer_options(),
+        )
+        await update.message.reply_text(
+            format_optimization_plan(plan),
+            parse_mode="Markdown",
+        )
+    except Exception as error:
+        await update.message.reply_text(f"❌ 生成计划失败: {error}")
+
+
+@check_permission
+async def optimize_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """立即执行一次与定时任务相同的积分优化流程。"""
+    await update.message.reply_text("⏳ 正在执行积分最大化方案...")
+    try:
+        report = await asyncio.to_thread(
+            execute_points_optimization,
+            **_execution_options(),
+        )
+        await update.message.reply_text(
+            format_optimization_report(report),
+            parse_mode="Markdown",
+        )
+    except Exception as error:
+        await update.message.reply_text(f"❌ 自动优化失败: {error}")
+
+
 @check_permission
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /help 命令"""
@@ -1133,20 +1260,52 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "`/mylist` - 查看已购电影\n"
         "`/mysearch` - 搜索已购电影\n"
         "`/history` - 查看积分历史记录\n"
+        "`/plan` - 查看计划但不执行\n"
+        "`/optimize` - 立即执行积分最大化方案\n"
         "`/reauth` - 重新获取 Picix 登录指令\n"
         "`/setuser` - 添加用户到允许列表\n"
         "`/help` - 显示此帮助信息\n\n"
         "💡 **使用提示**\n"
-        "• 建议每天执行一次 `/unlock` 命令\n"
+        "• 自动优化开启时无需手动计算购包数量\n"
         "• 定期使用 `/status` 查看进度\n"
         "• `/force_unlock` 3 可批量解锁（数量>1需确认）\n"
         "• 当剩余次数不足时会自动通知\n\n"
         "📊 **策略说明**\n"
-        "每月购买2次资源轻量包（900分）\n"
-        "获得60次解锁机会\n"
-        "预期净收益：+290分/月"
+        "优先复用有效额度，无法靠日更完成任务时自动补量\n"
+        "滚动周期消费不足450分时，在兜底日前按需购买轻量包"
     )
     await update.message.reply_text(help_msg, parse_mode='Markdown')
+
+async def auto_points_optimizer(context: ContextTypes.DEFAULT_TYPE):
+    """定时执行积分最大化计划，并只在有动作或异常时通知。"""
+    try:
+        report = await asyncio.to_thread(
+            execute_points_optimization,
+            **_execution_options(),
+        )
+        purchases = report.get("purchases") or []
+        unlock_result = report.get("unlock_result") or {}
+        has_action = bool(purchases or unlock_result.get("successes"))
+        has_warning = bool(report.get("messages") or unlock_result.get("failure"))
+        if not has_action and not has_warning:
+            print("自动积分优化：当前无需动作")
+            return
+
+        config = load_json_file(CONFIG_FILE, {})
+        user_ids = config.get("user_ids", ALLOWED_USER_IDS)
+        message = format_optimization_report(report)
+        for user_id in user_ids:
+            try:
+                await context.bot.send_message(
+                    chat_id=user_id,
+                    text=message,
+                    parse_mode="Markdown",
+                )
+            except Exception as error:
+                print(f"发送自动优化通知失败 (用户 {user_id}): {error}")
+    except Exception as error:
+        print(f"自动积分优化异常: {error}")
+
 
 async def auto_daily_unlock(context: ContextTypes.DEFAULT_TYPE):
     """自动执行每日解锁任务"""
@@ -1485,11 +1644,8 @@ async def check_auth_and_notify(context: ContextTypes.DEFAULT_TYPE):
 
 async def check_package_and_notify(context: ContextTypes.DEFAULT_TYPE):
     """定时检查资源包并发送通知"""
-    package = get_package_info()
-    if not package:
-        return
-
-    remaining = package.get("total", 0) - package.get("used", 0)
+    summary = get_package_summary()
+    remaining = summary["remaining"]
 
     # 检查是否需要通知
     if remaining <= NOTIFICATION_THRESHOLD:
@@ -1507,10 +1663,17 @@ async def check_package_and_notify(context: ContextTypes.DEFAULT_TYPE):
 
         # 发送通知
         msg = f"⚠️ **资源包提醒**\n\n"
-        msg += f"剩余次数: {remaining}/{package.get('total', 0)}\n"
-        msg += f"剩余次数不足 {NOTIFICATION_THRESHOLD} 次，请及时购买资源包！\n\n"
+        msg += f"全部有效包总剩余: {remaining} 次\n"
+        msg += (
+            f"剩余次数不足 {NOTIFICATION_THRESHOLD} 次；"
+            "自动优化器会在需要解锁时按计划购包。\n\n"
+        )
 
-        expired_at = package.get("expiredAt", 0)
+        expired_at = (
+            summary["active"][0].get("expired_at")
+            if summary["active"]
+            else None
+        )
         if expired_at:
             expired_date = datetime.fromtimestamp(expired_at)
             days_left = (expired_date - datetime.now()).days
@@ -1576,15 +1739,10 @@ async def set_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def check_user_permission(user_id):
     """检查用户权限"""
-    if not ALLOWED_USER_IDS:
-        return True  # 如果未设置限制，所有人可用
-
     config = load_config()
-    user_ids = config.get("user_ids", ALLOWED_USER_IDS)
-
+    user_ids = config.get("user_ids") or list(ALLOWED_USER_IDS)
     if not user_ids:
-        return True  # 如果配置为空，所有人可用
-
+        return False
     return user_id in user_ids
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1623,6 +1781,8 @@ def main():
             BotCommand("mylist", "查看已购电影"),
             BotCommand("mysearch", "搜索已购电影"),
             BotCommand("history", "查看积分历史"),
+            BotCommand("plan", "查看积分最大化计划"),
+            BotCommand("optimize", "立即执行积分优化"),
             BotCommand("reauth", "重新获取 Picix 登录指令"),
             BotCommand("help", "显示帮助信息"),
             BotCommand("setuser", "添加用户到允许列表")
@@ -1645,6 +1805,8 @@ def main():
     application.add_handler(CommandHandler("mysearch", mysearch_command))
     application.add_handler(CommandHandler("history", point_history_command))
     application.add_handler(CommandHandler("points", point_history_command))  # 别名
+    application.add_handler(CommandHandler("plan", plan_command))
+    application.add_handler(CommandHandler("optimize", optimize_command))
     application.add_handler(CommandHandler("reauth", reauth_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("setuser", set_user))
@@ -1679,7 +1841,7 @@ def main():
         )
         print(f"🔐 认证检查任务已设置：每 {CHECK_INTERVAL} 秒检查一次")
 
-        # 每天定时检查每日任务并自动解锁
+        # 每天定时检查低消、任务期限和资源包，并执行最优动作。
         if AUTO_UNLOCK_HOUR is not None:
             # 计算到指定时间的秒数
             now = datetime.now()
@@ -1690,22 +1852,33 @@ def main():
 
             seconds_until_target = (target_time - now).total_seconds()
 
-            # 每天执行一次自动解锁
+            scheduled_callback = (
+                auto_points_optimizer
+                if settings.auto_optimize
+                else auto_daily_unlock
+            )
             job_queue.run_repeating(
-                auto_daily_unlock,
+                scheduled_callback,
                 interval=86400,  # 每24小时执行一次
                 first=int(seconds_until_target)  # 在目标时间首次执行
             )
 
-            print(f"⏰ 自动解锁任务已设置：每天 {target_time.strftime('%H:%M')} 执行")
+            mode = "积分优化" if settings.auto_optimize else "每日解锁"
+            print(f"⏰ 自动{mode}任务已设置：每天 {target_time.strftime('%H:%M')} 执行")
         else:
             # 如果未设置时间，每小时检查一次（更频繁，确保不会漏掉）
+            scheduled_callback = (
+                auto_points_optimizer
+                if settings.auto_optimize
+                else auto_daily_unlock
+            )
             job_queue.run_repeating(
-                auto_daily_unlock,
+                scheduled_callback,
                 interval=3600,  # 每小时检查一次
                 first=300  # 5分钟后开始第一次检查
             )
-            print("⏰ 自动解锁任务已设置：每小时检查一次")
+            mode = "积分优化" if settings.auto_optimize else "每日解锁"
+            print(f"⏰ 自动{mode}任务已设置：每小时检查一次")
 
     print("🤖 机器人已启动！")
     print("使用 /start 命令开始使用")

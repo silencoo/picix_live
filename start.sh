@@ -24,7 +24,7 @@ run_uv() {
 }
 
 show_usage() {
-    echo "Usage: ./start.sh [bot|status|unlock|token|sync|help]"
+    echo "Usage: ./start.sh [bot|status|unlock|plan|optimize|token|sync|help]"
 }
 
 run_action() {
@@ -33,7 +33,7 @@ run_action() {
             show_usage
             return 0
             ;;
-        bot|status|unlock|token|sync)
+        bot|status|unlock|plan|optimize|token|sync)
             ;;
         *)
             echo "[ERROR] Unknown action: $1" >&2
@@ -61,6 +61,16 @@ run_action() {
             echo
             echo "Running daily unlock..."
             run_uv python auto_unlock_helper.py unlock
+            ;;
+        plan)
+            echo
+            echo "Calculating points optimization plan..."
+            run_uv python auto_unlock_helper.py plan
+            ;;
+        optimize)
+            echo
+            echo "Running points optimization..."
+            run_uv python auto_unlock_helper.py optimize
             ;;
         token)
             echo
@@ -93,8 +103,10 @@ while :; do
     echo "  1. Start Telegram Bot"
     echo "  2. Show Picix Status"
     echo "  3. Run Daily Unlock"
-    echo "  4. Check Authorization"
-    echo "  5. Sync Locked Dependencies"
+    echo "  4. Show Points Optimization Plan"
+    echo "  5. Run Points Optimization"
+    echo "  6. Check Authorization"
+    echo "  7. Sync Locked Dependencies"
     echo "  0. Exit"
     echo
     if [ -f ".env" ]; then
@@ -103,7 +115,7 @@ while :; do
         echo "  Environment: .env not found"
     fi
     echo
-    printf "Select [1-5,0]: "
+    printf "Select [1-7,0]: "
 
     if ! IFS= read -r CHOICE; then
         exit 0
@@ -113,8 +125,10 @@ while :; do
         1) ACTION=bot ;;
         2) ACTION=status ;;
         3) ACTION=unlock ;;
-        4) ACTION=token ;;
-        5) ACTION=sync ;;
+        4) ACTION=plan ;;
+        5) ACTION=optimize ;;
+        6) ACTION=token ;;
+        7) ACTION=sync ;;
         0) exit 0 ;;
         *)
             echo "Invalid selection."

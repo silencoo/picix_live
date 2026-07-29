@@ -10,6 +10,7 @@ picix_live/
 ├── picix_bot/
 │   ├── __main__.py          # `python -m picix_bot` 入口
 │   ├── app.py               # Telegram 命令、任务与通知
+│   ├── optimizer.py         # 纯积分规划器（不访问网络）
 │   └── settings.py          # 配置加载与环境变量覆盖
 ├── auto_unlock_helper.py    # Picix API 与命令行功能
 ├── tools/
@@ -68,6 +69,8 @@ picix_live/
    start.bat bot
    start.bat status
    start.bat unlock
+   start.bat plan
+   start.bat optimize
    start.bat token
    start.bat sync
    ```
@@ -85,6 +88,8 @@ picix_live/
    ./start.sh bot
    ./start.sh status
    ./start.sh unlock
+   ./start.sh plan
+   ./start.sh optimize
    ./start.sh token
    ./start.sh sync
    ```
@@ -101,6 +106,10 @@ uv run --locked --env-file .env python auto_unlock_helper.py status
 # 执行每日解锁
 uv run --locked --env-file .env python auto_unlock_helper.py unlock
 
+# 仅查看计划 / 立即执行计划
+uv run --locked --env-file .env python auto_unlock_helper.py plan
+uv run --locked --env-file .env python auto_unlock_helper.py optimize
+
 # 校验锁文件没有落后于 pyproject.toml
 uv lock --check
 ```
@@ -111,8 +120,25 @@ Windows 下的 `bot.bat`、`status.bat` 和 `unlock.bat` 都转发给
 Linux/macOS 下的 `bot.sh`、`status.sh` 和 `unlock.sh` 同样全部转发给
 `start.sh`。
 
-Bot 支持 `/status`、`/unlock`、`/force_unlock`、`/tasks`、`/package`、
-`/shop`、`/search`、`/mylist`、`/mysearch`、`/history` 和 `/reauth`。
+Bot 支持 `/status`、`/plan`、`/optimize`、`/unlock`、`/force_unlock`、
+`/tasks`、`/package`、`/shop`、`/search`、`/mylist`、`/mysearch`、
+`/history` 和 `/reauth`。
+
+## 积分最大化策略
+
+历史流水显示平台按约30天滚动周期要求至少消费450分，资源包和影片购买
+计入消费；若不足，在周期结算时扣除差额。优化器不会固定购买两个包，而是：
+
+1. 汇总所有未过期资源包并优先消耗；
+2. 每天完成一次每日解锁，片单20次未完成时优先从片单选择；
+3. 根据30天任务的实时截止时间计算可靠的剩余日更机会，无法靠日更
+   完成的数量立即补齐；
+4. 只有当前额度不够时才按需购买450分/30次的轻量包；
+5. 若到周期兜底日仍未消费满450分，购买一个轻量包替代无收益的低消
+   扣减；
+6. 购买前校验商品ID、价格和次数，积分不足或商城字段变化时停止。
+
+这样会保留跨周期剩余额度，避免“每周期固定两包”产生的浪费。
 
 ## 配置
 
@@ -128,6 +154,18 @@ Bot 支持 `/status`、`/unlock`、`/force_unlock`、`/tasks`、`/package`、
 | `PICIX_CHECK_INTERVAL` | 认证和资源包检查间隔，单位为秒 |
 | `PICIX_AUTO_UNLOCK_HOUR` | 每日自动解锁小时；设为 `none` 时每小时检查 |
 | `PICIX_AUTO_UNLOCK_MINUTE` | 每日自动解锁分钟 |
+| `PICIX_AUTO_OPTIMIZE` | 是否让定时任务执行完整优化，默认 `true` |
+| `PICIX_AUTO_PURCHASE` | 是否允许真实扣分自动购包，默认 `true` |
+| `PICIX_TIMEZONE` | 低消周期与时间显示时区，默认 `Asia/Shanghai` |
+| `PICIX_MINIMUM_MONTHLY_SPEND` | 每月最低消费，默认450 |
+| `PICIX_PACKAGE_GOOD_ID` | 轻量包商城商品ID，默认1 |
+| `PICIX_PACKAGE_PRICE` | 购买前校验价格，默认450 |
+| `PICIX_PACKAGE_QUOTA` | 购买前校验次数，默认30 |
+| `PICIX_SPEND_CYCLE_DAYS` | 低消滚动周期天数，默认30 |
+| `PICIX_SPEND_TRIGGER_DAY` | 周期内兜底购包日，默认第25天 |
+| `PICIX_POINTS_RESERVE` | 自动购买后至少保留的积分 |
+| `PICIX_MAX_AUTO_PURCHASES` | 单次任务最多自动购包数，默认2 |
+| `PICIX_MAX_AUTO_UNLOCKS` | 单次任务最多自动解锁数，默认50 |
 
 `.env`、`config.py`、`unlock_data/` 和虚拟环境都不会进入版本控制。
 

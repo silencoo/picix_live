@@ -20,6 +20,7 @@ env/
 ENV/
 .venv/
 .venv-cloak/
+.uv-cache/
 
 # CloakBrowser 二进制缓存（体积较大）
 .cloakbrowser-cache/

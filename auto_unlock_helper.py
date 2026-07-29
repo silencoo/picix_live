@@ -1,10 +1,4 @@
-"""
-双倍轻量包法自动化助手
-策略：每月购买2次资源轻量包（900分），获得60次解锁机会
-- 每日解锁1个视频（30次，满足每日任务）
-- 确保至少20个来自片单（满足片单任务）
-- 剩余20次在月内任意时间使用，凑够50个总数
-"""
+"""Picix 自动解锁与积分优化助手。"""
 import requests
 import sys
 import io
@@ -15,6 +9,8 @@ from logging.handlers import RotatingFileHandler
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
+
+from picix_bot.optimizer import build_optimization_plan, summarize_packages
 
 # 设置标准输出为UTF-8编码
 if sys.platform == 'win32':
@@ -433,12 +429,11 @@ def check_auth_valid():
     return False
 
 def get_package_info():
-    """获取个人资源包信息"""
-    result = api_request("GET", "/Packages/listMine")
-    if result and result.get("success"):
-        packages = result.get("data", [])
-        if packages:
-            return packages[0]  # 返回第一个资源包
+    """获取最早到期的可用资源包，兼容旧调用方。"""
+    packages = get_package_list()
+    _, active = summarize_packages(packages, now=datetime.now().astimezone())
+    if active:
+        return active[0]["raw"]
     return None
 
 def get_package_list():
@@ -449,6 +444,20 @@ def get_package_list():
         if isinstance(packages, list):
             return packages
     return []
+
+
+def get_package_summary():
+    """汇总所有未过期资源包，避免只读取第一包导致误购。"""
+    packages = get_package_list()
+    remaining, active = summarize_packages(
+        packages,
+        now=datetime.now().astimezone(),
+    )
+    return {
+        "remaining": remaining,
+        "active": active,
+        "all": packages,
+    }
 
 def _first_value(data, keys, default=None):
     """从字典中取第一个非空值"""
@@ -547,10 +556,69 @@ def show_purchasable_packages():
         if status is not None:
             print(f"  状态: {status}")
 
-def buy_lightweight_package():
-    """购买轻量包 (GoodID: 1)"""
+def find_purchasable_package(good_id):
+    """查找指定商品，并返回可用于购买前校验的标准字段。"""
+    packages, endpoint, params = get_purchasable_packages()
+    expected_id = str(good_id)
+    for package in packages:
+        actual_id = _first_value(package, ["goodId", "goodsId", "id"])
+        if actual_id is None or str(actual_id) != expected_id:
+            continue
+        return {
+            "good_id": str(actual_id),
+            "price": _first_value(
+                package, ["price", "point", "points", "amount", "cost", "coin"]
+            ),
+            "quota": _first_value(
+                package, ["total", "count", "times", "quantity", "num", "quota"]
+            ),
+            "name": _first_value(
+                package,
+                ["name", "title", "goodsName", "goodName", "packageName"],
+            ),
+            "endpoint": endpoint,
+            "params": params,
+            "raw": package,
+        }
+    return None
+
+
+def validate_purchasable_package(good_id, expected_price, expected_quota):
+    """购买前核对商品 ID、价格和次数，防止接口变化造成误扣。"""
+    package = find_purchasable_package(good_id)
+    if not package:
+        return False, "商城中未找到配置的轻量包，已禁止自动购买", None
+
+    price = package.get("price")
+    quota = package.get("quota")
+    if price is None or quota is None:
+        return (
+            False,
+            "商城未返回可校验的价格或次数，已禁止自动购买",
+            package,
+        )
+    try:
+        if int(price) != int(expected_price):
+            return (
+                False,
+                f"轻量包价格已变化（接口 {price}，配置 {expected_price}）",
+                package,
+            )
+        if int(quota) != int(expected_quota):
+            return (
+                False,
+                f"轻量包次数已变化（接口 {quota}，配置 {expected_quota}）",
+                package,
+            )
+    except (TypeError, ValueError):
+        return False, "商城返回的价格或次数无法识别", package
+    return True, "", package
+
+
+def buy_lightweight_package(good_id="1"):
+    """购买轻量包。调用前应先执行商品参数校验。"""
     print("正在购买轻量包...")
-    data = {"goodId": "1"}
+    data = {"goodId": str(good_id)}
     result = api_request("POST", "/Malls/payGood", data=data)
     if result:
         if result.get("success"):
@@ -726,6 +794,232 @@ def find_unlocked_movie_from_recommend(unlocked_movies, paid_movies=None):
         if movie_id and movie_id not in unlocked_movies and movie_id not in paid_movies:
             return movie_id
     return None
+
+
+def pick_next_movie(all_unlocked_movies, paid_movies, prefer_list=True):
+    """选择一个未解锁影片；片单任务未完成时优先从片单选择。"""
+    if prefer_list:
+        page = 1
+        while page <= 10:
+            movie_lists = get_movie_lists(page=page, sort="favorite_count")
+            if not movie_lists:
+                break
+            for movie_list in movie_lists:
+                list_id = movie_list.get("id")
+                movie_id = find_unlocked_movie_from_list(
+                    list_id,
+                    all_unlocked_movies,
+                    paid_movies,
+                )
+                if movie_id:
+                    return movie_id, True, list_id
+            page += 1
+
+    movie_id = find_unlocked_movie_from_recommend(
+        all_unlocked_movies,
+        paid_movies,
+    )
+    if movie_id:
+        return movie_id, False, None
+    return None, False, None
+
+
+def unlock_movies_batch(count, *, prefer_list=True):
+    """批量解锁并返回结构化结果，供手动命令和自动优化共用。"""
+    requested = max(0, int(count))
+    summary = get_package_summary()
+    available = summary["remaining"]
+    target = min(requested, available)
+    result = {
+        "requested": requested,
+        "attempted": target,
+        "successes": [],
+        "failure": None,
+        "available_before": available,
+    }
+    if target <= 0:
+        result["failure"] = "没有可用的资源包次数"
+        return result
+
+    tasks = analyze_tasks() or {}
+    list_task = tasks.get("M_UL_ML_20") or {}
+    list_remaining = max(
+        0,
+        int(list_task.get("target") or 0) - int(list_task.get("current") or 0),
+    )
+    if list_task.get("is_finish"):
+        list_remaining = 0
+
+    log = get_unlock_log()
+    unlocked_movies = set(log["unlocked_movies"])
+    paid_movies = get_all_paid_movies()
+    all_unlocked_movies = unlocked_movies | paid_movies
+
+    for _ in range(target):
+        use_list = prefer_list and list_remaining > 0
+        movie_id, from_list, list_id = pick_next_movie(
+            all_unlocked_movies,
+            paid_movies,
+            use_list,
+        )
+        if not movie_id:
+            result["failure"] = "未找到可解锁的电影"
+            break
+
+        success, error_msg = unlock_movie(
+            movie_id,
+            list_id=list_id if from_list else None,
+        )
+        if not success:
+            result["failure"] = error_msg or "未知错误"
+            break
+
+        save_unlock_record(movie_id, from_list, list_id)
+        all_unlocked_movies.add(movie_id)
+        paid_movies.add(movie_id)
+        if from_list:
+            list_remaining = max(0, list_remaining - 1)
+        result["successes"].append(
+            {
+                "movie_id": movie_id,
+                "from_list": from_list,
+                "list_id": list_id,
+            }
+        )
+        time.sleep(0.8)
+
+    return result
+
+
+def build_live_optimization_plan(**options):
+    """读取实时状态并生成积分优化计划。"""
+    return build_optimization_plan(
+        history=get_point_history(),
+        packages=get_package_list(),
+        tasks=analyze_tasks() or {},
+        **options,
+    )
+
+
+def execute_points_optimization(
+    *,
+    allow_purchase=True,
+    timezone_name="Asia/Shanghai",
+    minimum_spend=450,
+    package_good_id="1",
+    package_price=450,
+    package_quota=30,
+    spend_trigger_day=25,
+    points_reserve=0,
+    max_auto_purchases=2,
+    max_auto_unlocks=50,
+    spend_cycle_days=30,
+):
+    """执行一次按余额、低消和任务期限生成的积分最大化计划。"""
+    options = {
+        "timezone_name": timezone_name,
+        "minimum_spend": minimum_spend,
+        "package_price": package_price,
+        "package_quota": package_quota,
+        "spend_trigger_day": spend_trigger_day,
+        "points_reserve": points_reserve,
+        "max_auto_purchases": max_auto_purchases,
+        "max_auto_unlocks": max_auto_unlocks,
+        "spend_cycle_days": spend_cycle_days,
+    }
+    report = {
+        "success": False,
+        "plan": None,
+        "purchases": [],
+        "unlock_result": None,
+        "messages": [],
+    }
+
+    accept_results = accept_default_tasks()
+    failed_accepts = [
+        unique
+        for unique, info in accept_results.items()
+        if info.get("status") == "failed"
+    ]
+    if failed_accepts:
+        report["messages"].append(
+            f"以下任务领取失败：{', '.join(failed_accepts)}"
+        )
+
+    tasks = analyze_tasks()
+    history = get_point_history()
+    if not tasks or not history:
+        report["messages"].append("无法读取任务或积分状态，请检查登录状态")
+        return report
+
+    plan = build_optimization_plan(
+        history=history,
+        packages=get_package_list(),
+        tasks=tasks,
+        **options,
+    )
+    report["plan"] = plan.to_dict()
+    report["messages"].extend(plan.blocked_reasons)
+
+    if plan.packages_to_buy and not allow_purchase:
+        report["messages"].append(
+            f"计划需要购买 {plan.packages_to_buy} 个轻量包，但自动购买已关闭"
+        )
+    elif plan.packages_to_buy:
+        valid, reason, package = validate_purchasable_package(
+            package_good_id,
+            package_price,
+            package_quota,
+        )
+        if not valid:
+            report["messages"].append(reason)
+            return report
+
+        package_name = package.get("name") or f"商品 {package_good_id}"
+        for _ in range(plan.packages_to_buy):
+            success, message = buy_lightweight_package(package_good_id)
+            report["purchases"].append(
+                {
+                    "success": success,
+                    "message": message,
+                    "good_id": str(package_good_id),
+                    "name": package_name,
+                    "price": package_price,
+                }
+            )
+            if not success:
+                report["messages"].append(f"购买失败：{message}")
+                break
+            time.sleep(1)
+
+    # 必须从资源包接口确认额度已到账，避免无包时退化为20分直购影片。
+    verified_quota = get_package_summary()["remaining"]
+    unlock_count = min(plan.unlocks_now, verified_quota)
+    if plan.unlocks_now > unlock_count:
+        report["messages"].append(
+            f"计划解锁 {plan.unlocks_now} 部，但已确认额度仅 {verified_quota} 次"
+        )
+
+    if unlock_count:
+        report["unlock_result"] = unlock_movies_batch(
+            unlock_count,
+            prefer_list=plan.list_remaining > 0,
+        )
+
+    successful_purchases = sum(
+        1 for purchase in report["purchases"] if purchase["success"]
+    )
+    successful_unlocks = len(
+        (report["unlock_result"] or {}).get("successes", [])
+    )
+    report["success"] = (
+        not report["messages"]
+        or successful_purchases > 0
+        or successful_unlocks > 0
+        or (plan.unlocks_now == 0 and plan.packages_to_buy == 0)
+    )
+    return report
+
 
 def daily_unlock():
     """执行每日解锁任务"""
@@ -903,27 +1197,19 @@ def show_status():
             if monthly_task["is_finish"]:
                 earned += monthly_task["point"]
             else:
-                # 按进度计算
-                progress = monthly_task["current"] / monthly_task["target"]
-                earned += int(monthly_task["point"] * progress)
-                potential += int(monthly_task["point"] * (1 - progress))
+                potential += monthly_task["point"]
 
         if list_task:
             if list_task["is_finish"]:
                 earned += list_task["point"]
             else:
-                # 按进度计算
-                progress = list_task["current"] / list_task["target"]
-                earned += int(list_task["point"] * progress)
-                potential += int(list_task["point"] * (1 - progress))
+                potential += list_task["point"]
 
         print(f"\n收益预估:")
         print(f"  已获得: {earned} 分")
         print(f"  待获得: {potential} 分")
-        print(f"  总计: {earned + potential} 分")
-        print(f"  成本: 900 分 (2次轻量包)")
-        net = (earned + potential) - 900
-        print(f"  净收益: {net:+d} 分")
+        print(f"  任务奖励上限: {earned + potential} 分")
+        print("  月任务奖励仅在达到门槛后计入")
 
     # 今日解锁
     today = datetime.now().strftime("%Y-%m-%d")
@@ -938,11 +1224,14 @@ def main():
     """主函数"""
     import argparse
 
-    parser = argparse.ArgumentParser(description="双倍轻量包法自动化助手")
+    parser = argparse.ArgumentParser(description="Picix 积分最大化自动化助手")
     parser.add_argument(
         "action",
-        choices=["unlock", "status", "auto_buy", "packages"],
-        help="操作: unlock=每日解锁, status=查看状态, auto_buy=自动购买并解锁, packages=查看可购买资源包"
+        choices=["unlock", "status", "plan", "optimize", "auto_buy", "packages"],
+        help=(
+            "操作: unlock=每日解锁, status=查看状态, plan=仅生成优化计划, "
+            "optimize=执行积分优化, packages=查看商品"
+        ),
     )
     args = parser.parse_args()
 
@@ -950,6 +1239,30 @@ def main():
         daily_unlock()
     elif args.action == "status":
         show_status()
+    elif args.action in {"plan", "optimize"}:
+        from picix_bot.settings import settings
+
+        options = {
+            "timezone_name": settings.timezone,
+            "minimum_spend": settings.minimum_monthly_spend,
+            "package_price": settings.package_price,
+            "package_quota": settings.package_quota,
+            "spend_cycle_days": settings.spend_cycle_days,
+            "spend_trigger_day": settings.spend_trigger_day,
+            "points_reserve": settings.points_reserve,
+            "max_auto_purchases": settings.max_auto_purchases,
+            "max_auto_unlocks": settings.max_auto_unlocks,
+        }
+        if args.action == "plan":
+            plan = build_live_optimization_plan(**options)
+            print(json.dumps(plan.to_dict(), ensure_ascii=False, indent=2))
+        else:
+            report = execute_points_optimization(
+                **options,
+                allow_purchase=settings.auto_purchase,
+                package_good_id=settings.package_good_id,
+            )
+            print(json.dumps(report, ensure_ascii=False, indent=2))
     elif args.action == "auto_buy":
         ensure_package_and_unlock()
     elif args.action == "packages":
