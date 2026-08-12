@@ -31,16 +31,16 @@
 
 ```bash
 # 查看状态
-uv run --locked --env-file .env python auto_unlock_helper.py status
+uv run --locked --env-file .env picix status
 
 # 只计算计划，不产生购买或解锁
-uv run --locked --env-file .env python auto_unlock_helper.py plan
+uv run --locked --env-file .env picix plan
 
 # 执行计划；PICIX_AUTO_PURCHASE=true 时可能真实扣分购包
-uv run --locked --env-file .env python auto_unlock_helper.py optimize
+uv run --locked --env-file .env picix optimize
 
 # 只执行一次普通解锁
-uv run --locked --env-file .env python auto_unlock_helper.py unlock
+uv run --locked --env-file .env picix unlock
 ```
 
 Telegram 中对应 `/status`、`/plan`、`/optimize` 和 `/unlock`。Bot 默认

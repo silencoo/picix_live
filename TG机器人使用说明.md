@@ -15,7 +15,7 @@
 
    ```bash
    uv sync --locked
-   uv run --locked --env-file .env python -m picix_bot
+   uv run --locked --env-file .env picix bot
    ```
 
 也可在 Windows 运行 `start.bat`，或在 Linux/macOS 运行
@@ -78,13 +78,17 @@ Python 文件或重启。
 进行网页诊断或首次人工处理 Cloudflare 的场景；完成后 Bot 可继续在
 无头服务器运行。
 
-常见后台方式：
+生产环境使用仓库中的 `deploy/picix-bot.service`，不要再用 SSH 会话或
+`nohup` 托管：
 
 ```bash
-nohup ./start.sh bot > bot.log 2>&1 &
+sudo cp deploy/picix-bot.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now picix-bot.service
+sudo systemctl status picix-bot.service
 ```
 
-生产环境建议用 systemd，并限制秘密文件权限：
+同时限制秘密文件权限：
 
 ```bash
 chmod 600 .env unlock_data/authorization.json

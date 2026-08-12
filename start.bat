@@ -66,42 +66,42 @@ if errorlevel 1 goto run_bot
 :run_bot
 echo.
 echo Starting Telegram Bot...
-uv run --locked %UV_ENV_ARGS% python -u -m picix_bot
+uv run --locked %UV_ENV_ARGS% picix bot
 set "PICIX_RESULT=%ERRORLEVEL%"
 goto action_complete
 
 :run_status
 echo.
 echo Loading Picix status...
-uv run --locked %UV_ENV_ARGS% python auto_unlock_helper.py status
+uv run --locked %UV_ENV_ARGS% picix status
 set "PICIX_RESULT=%ERRORLEVEL%"
 goto action_complete
 
 :run_unlock
 echo.
 echo Running daily unlock...
-uv run --locked %UV_ENV_ARGS% python auto_unlock_helper.py unlock
+uv run --locked %UV_ENV_ARGS% picix unlock
 set "PICIX_RESULT=%ERRORLEVEL%"
 goto action_complete
 
 :run_plan
 echo.
 echo Calculating points optimization plan...
-uv run --locked %UV_ENV_ARGS% python auto_unlock_helper.py plan
+uv run --locked %UV_ENV_ARGS% picix plan
 set "PICIX_RESULT=%ERRORLEVEL%"
 goto action_complete
 
 :run_optimize
 echo.
 echo Running points optimization...
-uv run --locked %UV_ENV_ARGS% python auto_unlock_helper.py optimize
+uv run --locked %UV_ENV_ARGS% picix optimize
 set "PICIX_RESULT=%ERRORLEVEL%"
 goto action_complete
 
 :run_token
 echo.
 echo Checking Picix authorization...
-uv run --locked %UV_ENV_ARGS% python check_token_expiry.py
+uv run --locked %UV_ENV_ARGS% picix token
 set "PICIX_RESULT=%ERRORLEVEL%"
 goto action_complete
 

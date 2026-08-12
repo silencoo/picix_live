@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
-import auto_unlock_helper as helper
+from picix_bot.services import automation as helper
 
 
 TZ = ZoneInfo("Asia/Shanghai")
@@ -83,10 +83,16 @@ class OptimizerExecutionTests(unittest.TestCase):
             patch.object(
                 helper,
                 "get_package_state",
-                side_effect=[
-                    available_state([], "packages"),
-                    available_state([package], "packages"),
-                ],
+                return_value=available_state([], "packages"),
+            ),
+            patch.object(
+                helper,
+                "get_package_summary",
+                return_value={
+                    **available_state([package], "all"),
+                    "remaining": 30,
+                    "active": [],
+                },
             ),
             patch.object(helper, "accept_default_tasks", return_value={}),
             patch.object(helper, "analyze_tasks", return_value=active_tasks()),

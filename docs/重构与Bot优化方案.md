@@ -9,7 +9,8 @@
 
 ## 线上核查结论（2026-08-13）
 
-- 部署版本与仓库 `main` 一致，Bot 由 `uv run --locked --env-file .env python -u -m picix_bot` 运行。
+- 初次核查时 Bot 由 `python -m picix_bot` 运行；模块拆分后统一入口为
+  `uv run --locked --env-file .env picix bot`。
 - `/Packages/listMine` 当前返回 1 个有效包：`total=30`、`used=5`，即剩余 25 次。
 - `/Malls/listGoods` 返回 3 个资源包、2 个邀请码和 2 个兑换码。
 - 商城资源包使用字段 `id/name/desc/price/validDays`；次数没有独立字段，只出现在
@@ -36,7 +37,9 @@
 - [x] 自动优化、每日解锁和批量解锁在状态不确定时停止。
 - [x] 商城购买前重新确认商品存在。
 - [x] 定时资源包检查不再把接口故障通知成 0 次。
+- [x] 已购影片分页故障不再当作空列表，避免重复解锁或重复购买。
 - [x] 关键 Bot 请求移到工作线程，进度消息改为原地更新。
+- [x] 购买、批量解锁、手动解锁和定时优化使用同一互斥锁。
 - [x] 增加商城真实结构、401、522 和禁止误购的回归测试。
 
 ### 第二阶段：模块拆分
@@ -54,23 +57,22 @@ picix_bot/
 │   ├── packages.py     # 额度汇总
 │   ├── tasks.py        # 任务状态
 │   └── unlock.py       # 选片与解锁流程
-├── bot/
-│   ├── handlers.py     # Telegram handlers
-│   ├── messages.py     # 文案与键盘
-│   └── jobs.py         # 定时任务
+├── app.py              # Telegram handlers 与定时任务（下一阶段继续拆分）
 ├── cli.py              # 统一命令入口
 └── optimizer.py        # 保持纯计算
 ```
 
-`auto_unlock_helper.py` 暂时保留为兼容导出层，Bot 和新 CLI 逐步改用拆分后的模块。
+`auto_unlock_helper.py` 已缩减为兼容导出层；Bot 和 CLI 已改用拆分后的模块。
+为降低线上回归风险，本次没有一次性拆散 Telegram handler；后续可按
+`messages/handlers/jobs` 逐块迁移，每一块单独回归。
 
 ### 第三阶段：脚本入口整理
 
-- `start.sh` 和 `start.bat` 继续作为跨平台控制中心。
-- 增加 Python console script，统一为 `uv run picix <command>`。
-- `bot/status/unlock.sh|bat` 先保留并标记弃用，至少经过一个发布周期后再删除。
-- `tools/` 只放部署和浏览器辅助工具；一次性诊断脚本移到 `scripts/diagnostics/`。
-- README 只保留一套主流程，其他中文说明文档链接到主流程，避免命令重复漂移。
+- [x] `start.sh` 和 `start.bat` 继续作为跨平台控制中心。
+- [x] 增加 Python console script，统一为 `uv run picix <command>`。
+- [x] `bot/status/unlock.sh|bat` 先保留兼容，至少经过一个发布周期后再删除。
+- [x] `tools/` 只放部署和浏览器辅助工具；一次性诊断脚本移到 `scripts/diagnostics/`。
+- [x] README 使用统一 `picix <command>` 主流程，其他说明同步入口。
 
 ### 第四阶段：部署与观察
 
@@ -80,4 +82,3 @@ picix_bot/
 4. 手动验证 `/status`、`/package`、`/shop` 和 `/plan`。
 5. 不触发真实购买地验证 `/optimize` 计划；观察至少一轮认证检查和资源包检查。
 6. 确认稳定后再开启或保留自动购买。
-

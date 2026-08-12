@@ -8,11 +8,14 @@ Picix 命令行助手与 Telegram Bot。项目统一使用
 ```text
 picix_live/
 ├── picix_bot/
-│   ├── __main__.py          # `python -m picix_bot` 入口
+│   ├── api/                 # HTTP、认证与只读 endpoint
+│   ├── services/            # 商城、资源包、任务、解锁与自动化
+│   ├── cli.py               # `picix` 统一命令入口
+│   ├── __main__.py          # 兼容 `python -m picix_bot`
 │   ├── app.py               # Telegram 命令、任务与通知
 │   ├── optimizer.py         # 纯积分规划器（不访问网络）
 │   └── settings.py          # 配置加载与环境变量覆盖
-├── auto_unlock_helper.py    # Picix API 与命令行功能
+├── auto_unlock_helper.py    # 旧导入路径兼容层
 ├── tools/
 │   ├── cloakbrowser_cdp.py
 │   ├── chrome_devtools_cloak.ps1
@@ -58,7 +61,7 @@ picix_live/
 5. 启动 Bot：
 
    ```powershell
-   uv run --locked --env-file .env python -m picix_bot
+   uv run --locked --env-file .env picix bot
    ```
 
    Windows 推荐直接双击 `start.bat`，在交互菜单中选择操作。
@@ -98,17 +101,17 @@ picix_live/
 
 ```powershell
 # Telegram Bot
-uv run --locked --env-file .env python -m picix_bot
+uv run --locked --env-file .env picix bot
 
 # 查看 Picix 状态
-uv run --locked --env-file .env python auto_unlock_helper.py status
+uv run --locked --env-file .env picix status
 
 # 执行每日解锁
-uv run --locked --env-file .env python auto_unlock_helper.py unlock
+uv run --locked --env-file .env picix unlock
 
 # 仅查看计划 / 立即执行计划
-uv run --locked --env-file .env python auto_unlock_helper.py plan
-uv run --locked --env-file .env python auto_unlock_helper.py optimize
+uv run --locked --env-file .env picix plan
+uv run --locked --env-file .env picix optimize
 
 # 校验锁文件没有落后于 pyproject.toml
 uv lock --check

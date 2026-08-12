@@ -1,16 +1,15 @@
 """Picix 积分最大化 Telegram Bot。"""
-import requests
+# Runtime stdout configuration intentionally happens before Telegram imports.
+# ruff: noqa: E402
+
 import sys
-import io
 import os
-import json
 import time
 import asyncio
 import builtins
 import functools
 import re
 from datetime import datetime, timedelta
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
 # 设置标准输出为无缓冲/行缓冲模式（立即输出，解决 Windows 输出延迟问题）
@@ -34,29 +33,55 @@ from telegram.ext import (
     CommandHandler,
     CallbackQueryHandler,
     ContextTypes,
-    JobQueue
 )
 
 # 集中加载运行配置；环境变量优先于项目根目录的 config.py。
 from .settings import settings
 from .optimizer import build_optimization_plan
-
-# 导入原有助手的功能
-from auto_unlock_helper import (
-    AUTHORIZATION, BASE_URL, HEADERS, DATA_DIR,
-    load_json_file, save_json_file, api_request,
-    get_task_list, get_task_state, get_unlock_log, analyze_tasks,
-    unlock_movie, get_movie_lists, get_movie_list_detail,
-    get_recommend_movies, find_unlocked_movie_from_list,
-    find_unlocked_movie_from_recommend, save_unlock_record,
-    get_point_history, get_point_history_state, get_all_paid_movies, check_auth_valid,
-    search_movies, get_movie_detail, get_paid_movies, accept_default_tasks,
-    should_unlock_from_list, accept_task, get_purchasable_packages,
+from .api.client import (
+    DATA_DIR,
+    api_request,
+    check_auth_valid,
+    check_login_code,
+    get_auth_state,
+    load_json_file,
+    request_login_code,
+    save_json_file,
+    update_authorization,
+)
+from .api.endpoints import (
+    get_all_paid_movies_state,
+    get_movie_detail,
+    get_movie_lists,
+    get_paid_movies_state,
+    get_point_history_state,
+    search_movies,
+)
+from .services.automation import (
+    build_live_optimization_plan,
+    execute_points_optimization,
+)
+from .services.catalog import (
     get_purchasable_package_state,
-    get_package_list, request_login_code, check_login_code,
-    update_authorization, get_package_info, get_package_summary,
-    build_live_optimization_plan, execute_points_optimization,
-    unlock_movies_batch
+)
+from .services.packages import (
+    get_package_summary,
+)
+from .services.tasks import (
+    accept_default_tasks,
+    accept_task,
+    analyze_tasks,
+    get_task_list,
+    get_task_state,
+    should_unlock_from_list,
+)
+from .services.unlock import (
+    find_unlocked_movie_from_list,
+    find_unlocked_movie_from_recommend,
+    get_unlock_log,
+    save_unlock_record,
+    unlock_movie,
+    unlock_movies_batch,
 )
 
 # 设置标准输出为UTF-8编码（仅用于命令行输出，不影响Telegram消息）
@@ -277,7 +302,7 @@ def format_status_message():
         else:
             msg += "\n"
         if remaining <= NOTIFICATION_THRESHOLD:
-            msg += f"⚠️ **警告**: 剩余次数不足，请及时购买资源包！\n\n"
+            msg += "⚠️ **警告**: 剩余次数不足，请及时购买资源包！\n\n"
     else:
         msg += "📦 **资源包**: 接口正常，当前确实没有可用额度\n\n"
 
@@ -321,7 +346,7 @@ def format_status_message():
         else:
             potential += list_task["point"]
 
-    msg += f"\n💰 **收益预估**\n"
+    msg += "\n💰 **收益预估**\n"
     msg += f"已获得: {earned} 分\n"
     msg += f"待获得: {potential} 分\n"
     msg += f"任务奖励上限: {earned + potential} 分\n"
@@ -573,9 +598,13 @@ def _pick_next_movie(all_unlocked_movies, paid_movies, prefer_list=True):
 
 async def _execute_force_unlock(message, count):
     """执行强制批量解锁"""
+    if FINANCIAL_ACTION_LOCK.locked():
+        await message.reply_text("⏳ 另一个购买或解锁操作正在执行，请稍后再试")
+        return
     await message.reply_text(f"⏳ 正在强制解锁 {count} 部影片...")
     try:
-        result = await asyncio.to_thread(unlock_movies_batch, count)
+        async with FINANCIAL_ACTION_LOCK:
+            result = await asyncio.to_thread(unlock_movies_batch, count)
         successes = result["successes"]
         failure_msg = result.get("failure")
 
@@ -635,6 +664,20 @@ def check_permission(func):
                 )
             return
         return await func(update, context)
+    return wrapper
+
+
+def serialize_financial_action(func):
+    """Prevent overlapping commands that can consume points or quota."""
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if FINANCIAL_ACTION_LOCK.locked():
+            await update.effective_message.reply_text(
+                "⏳ 另一个购买或解锁操作正在执行，请稍后再试"
+            )
+            return
+        async with FINANCIAL_ACTION_LOCK:
+            return await func(update, context)
+
     return wrapper
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -790,6 +833,7 @@ async def shop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await progress.edit_text(f"❌ 获取商品列表失败: {str(e)}")
 
 @check_permission
+@serialize_financial_action
 async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /unlock 命令"""
     progress = await update.message.reply_text("⏳ 正在检查任务、额度和登录状态...")
@@ -857,18 +901,16 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # 获取服务器端的已解锁电影列表（避免重复解锁）
         await progress.edit_text("⏳ 状态正常，正在选择一部未解锁影片...")
-        paid_movies = await asyncio.to_thread(get_all_paid_movies)
+        paid_state = await asyncio.to_thread(get_all_paid_movies_state)
+        if not paid_state["available"]:
+            await progress.edit_text(
+                f"🛑 已停止解锁：{paid_state['error']}。无法排除重复解锁。"
+            )
+            return
+        paid_movies = paid_state["items"]
 
         # 合并本地和服务器端的已解锁列表
         all_unlocked_movies = unlocked_movies | paid_movies
-
-        # 获取月度统计
-        current_month = datetime.now().strftime("%Y-%m")
-        monthly_stats = log["monthly_stats"].get(current_month, {
-            "total": 0,
-            "from_list": 0,
-            "list_ids": []
-        })
 
         # 每日解锁策略：片单任务完成后不再从片单获取
         movie_id = None
@@ -991,13 +1033,21 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         keyword = " ".join(args)
 
-    await update.message.reply_text(f"🔎 正在搜索：{keyword} (第 {page} 页)...")
-    results = search_movies(keyword, page=page)
+    progress = await update.message.reply_text(
+        f"🔎 正在搜索：{keyword} (第 {page} 页)..."
+    )
+    results = await asyncio.to_thread(search_movies, keyword, page)
     if not results:
-        await update.message.reply_text("❌ 未找到相关电影")
+        await progress.edit_text("❌ 未找到相关电影，或搜索接口暂不可用")
         return
 
-    paid_movies = get_all_paid_movies()
+    paid_state = await asyncio.to_thread(get_all_paid_movies_state)
+    if not paid_state["available"]:
+        await progress.edit_text(
+            f"⚠️ 搜索成功，但{paid_state['error']}，无法安全显示购买按钮"
+        )
+        return
+    paid_movies = paid_state["items"]
     if len(results) == 1:
         movie = results[0]
         movie_id = movie.get("id")
@@ -1008,7 +1058,13 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             buttons.append([InlineKeyboardButton("购买", callback_data=f"buy:{movie_id}")])
         buttons.append([InlineKeyboardButton("详情", callback_data=f"info:{movie_id}")])
-        await _reply_with_cover(update.message, cover, caption, InlineKeyboardMarkup(buttons))
+        await progress.delete()
+        await _reply_with_cover(
+            update.message,
+            cover,
+            caption,
+            InlineKeyboardMarkup(buttons),
+        )
         return
 
     msg_lines = [f"🔎 搜索结果：{keyword} (第 {page} 页)"]
@@ -1027,7 +1083,10 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton(f"#{idx} 购买", callback_data=f"buy:{movie_id}"),
                 InlineKeyboardButton("详情", callback_data=f"info:{movie_id}")
             ])
-    await update.message.reply_text("\n".join(msg_lines), reply_markup=InlineKeyboardMarkup(buttons))
+    await progress.edit_text(
+        "\n".join(msg_lines),
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
 
 @check_permission
 async def mylist_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1035,10 +1094,16 @@ async def mylist_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     page = 1
     if context.args and context.args[0].isdigit():
         page = int(context.args[0])
-    await update.message.reply_text(f"📚 正在获取已购电影 (第 {page} 页)...")
-    movies = get_paid_movies(page=page)
+    progress = await update.message.reply_text(
+        f"📚 正在获取已购电影 (第 {page} 页)..."
+    )
+    state = await asyncio.to_thread(get_paid_movies_state, page)
+    if not state["available"]:
+        await progress.edit_text(f"⚠️ 已购电影暂不可用：{state['error']}")
+        return
+    movies = state["items"]
     if not movies:
-        await update.message.reply_text("❌ 未找到已购电影")
+        await progress.edit_text("ℹ️ 接口正常，但这一页没有已购电影")
         return
 
     msg_lines = [f"📚 已购电影 (第 {page} 页)"]
@@ -1051,7 +1116,10 @@ async def mylist_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton(f"#{idx} 详情", callback_data=f"info:{movie_id}"),
             InlineKeyboardButton("直链", callback_data=f"play:{movie_id}")
         ])
-    await update.message.reply_text("\n".join(msg_lines), reply_markup=InlineKeyboardMarkup(buttons))
+    await progress.edit_text(
+        "\n".join(msg_lines),
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
 
 @check_permission
 async def mysearch_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1060,12 +1128,18 @@ async def mysearch_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ 请提供搜索关键词，例如：/mysearch SONE")
         return
     keyword = " ".join(context.args).lower()
-    await update.message.reply_text(f"🔎 正在已购电影中搜索：{keyword} ...")
+    progress = await update.message.reply_text(
+        f"🔎 正在已购电影中搜索：{keyword} ..."
+    )
 
     results = []
     max_pages = 5
     for page in range(1, max_pages + 1):
-        movies = get_paid_movies(page=page)
+        state = await asyncio.to_thread(get_paid_movies_state, page)
+        if not state["available"]:
+            await progress.edit_text(f"⚠️ 已购电影暂不可用：{state['error']}")
+            return
+        movies = state["items"]
         if not movies:
             break
         for movie in movies:
@@ -1076,7 +1150,7 @@ async def mysearch_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             break
 
     if not results:
-        await update.message.reply_text("❌ 未找到已购电影")
+        await progress.edit_text("❌ 未找到匹配的已购电影")
         return
 
     if len(results) == 1:
@@ -1087,7 +1161,13 @@ async def mysearch_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("直链", callback_data=f"play:{movie_id}")],
             [InlineKeyboardButton("详情", callback_data=f"info:{movie_id}")]
         ]
-        await _reply_with_cover(update.message, cover, caption, InlineKeyboardMarkup(buttons))
+        await progress.delete()
+        await _reply_with_cover(
+            update.message,
+            cover,
+            caption,
+            InlineKeyboardMarkup(buttons),
+        )
         return
 
     msg_lines = [f"🔎 已购搜索结果：{keyword}"]
@@ -1100,7 +1180,10 @@ async def mysearch_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton(f"#{idx} 详情", callback_data=f"info:{movie_id}"),
             InlineKeyboardButton("直链", callback_data=f"play:{movie_id}")
         ])
-    await update.message.reply_text("\n".join(msg_lines), reply_markup=InlineKeyboardMarkup(buttons))
+    await progress.edit_text(
+        "\n".join(msg_lines),
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
 
 async def handle_movie_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理按钮回调（购买/详情/直链/商店/批量解锁）"""
@@ -1117,13 +1200,13 @@ async def handle_movie_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     data = query.data or ""
     if data.startswith("accept:"):
         unique = data.split(":", 1)[1]
-        success, msg = accept_task(unique)
+        success, msg = await asyncio.to_thread(accept_task, unique)
         if success:
             await query.answer("领取成功")
         else:
             await query.answer("领取失败", show_alert=True)
 
-        tasks = get_task_list()
+        tasks = await asyncio.to_thread(get_task_list)
         if tasks:
             text, keyboard = _build_tasks_message(tasks)
             try:
@@ -1207,11 +1290,31 @@ async def handle_movie_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     if action == "buy":
-        success, error_msg = unlock_movie(movie_id, list_id=None)
+        if FINANCIAL_ACTION_LOCK.locked():
+            await query.message.reply_text(
+                "⏳ 另一个购买或解锁操作正在执行，请勿重复点击"
+            )
+            return
+        async with FINANCIAL_ACTION_LOCK:
+            paid_state = await asyncio.to_thread(get_all_paid_movies_state)
+            if not paid_state["available"]:
+                await query.message.reply_text(
+                    f"🛑 购买已取消：{paid_state['error']}。"
+                    "无法确认影片是否已购买时不会重复扣费。"
+                )
+                return
+            if movie_id in paid_state["items"]:
+                await query.message.reply_text("ℹ️ 该影片已经购买，无需重复操作")
+                return
+            success, error_msg = await asyncio.to_thread(
+                unlock_movie,
+                movie_id,
+                list_id=None,
+            )
         if not success:
             await query.message.reply_text(f"❌ 购买失败: {error_msg or '未知错误'}")
             return
-        detail = get_movie_detail(movie_id)
+        detail = await asyncio.to_thread(get_movie_detail, movie_id)
         caption, cover = _build_movie_caption({"id": movie_id}, detail)
         stream = _extract_stream_link(detail)
         buttons = []
@@ -1223,7 +1326,7 @@ async def handle_movie_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     if action == "info":
-        detail = get_movie_detail(movie_id)
+        detail = await asyncio.to_thread(get_movie_detail, movie_id)
         if not detail:
             await query.message.reply_text("❌ 获取详情失败")
             return
@@ -1238,7 +1341,7 @@ async def handle_movie_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     if action == "play":
-        detail = get_movie_detail(movie_id)
+        detail = await asyncio.to_thread(get_movie_detail, movie_id)
         stream = _extract_stream_link(detail)
         if not stream:
             await query.message.reply_text("❌ 未解锁，无法获取直链")
@@ -1267,7 +1370,7 @@ async def point_history_command(update: Update, context: ContextTypes.DEFAULT_TY
         current_points = history[0].get("totalPoints", 0) if history else 0
 
         # 构建消息
-        msg = f"💰 **积分历史**\n\n"
+        msg = "💰 **积分历史**\n\n"
         msg += f"当前积分: **{current_points}** 分\n\n"
         msg += "**最近记录：**\n"
 
@@ -1407,11 +1510,11 @@ async def auto_points_optimizer(context: ContextTypes.DEFAULT_TYPE):
         print(f"自动积分优化异常: {error}")
 
 
-async def auto_daily_unlock(context: ContextTypes.DEFAULT_TYPE):
+async def _auto_daily_unlock_unlocked(context: ContextTypes.DEFAULT_TYPE):
     """自动执行每日解锁任务"""
     try:
         # 领取常用任务（避免未领取导致进度异常）
-        accept_results = accept_default_tasks()
+        accept_results = await asyncio.to_thread(accept_default_tasks)
         failed_accepts = [
             u for u, info in accept_results.items()
             if info.get("status") == "failed"
@@ -1420,7 +1523,7 @@ async def auto_daily_unlock(context: ContextTypes.DEFAULT_TYPE):
             print(f"自动解锁：任务领取失败 {', '.join(failed_accepts)}")
 
         # 分析任务状态
-        tasks = analyze_tasks()
+        tasks = await asyncio.to_thread(analyze_tasks)
         if not tasks:
             print("自动解锁：无法获取任务状态")
             return
@@ -1436,7 +1539,7 @@ async def auto_daily_unlock(context: ContextTypes.DEFAULT_TYPE):
             return
 
         # 检查资源包
-        package_summary = get_package_summary()
+        package_summary = await asyncio.to_thread(get_package_summary)
         if not package_summary["available"]:
             print(f"自动解锁：资源包状态不可用，停止执行：{package_summary['error']}")
             return
@@ -1459,24 +1562,24 @@ async def auto_daily_unlock(context: ContextTypes.DEFAULT_TYPE):
             return
 
         # 执行解锁逻辑（复用 unlock 函数的逻辑）
-        log = get_unlock_log()
+        log = await asyncio.to_thread(get_unlock_log)
         unlocked_movies = set(log["unlocked_movies"])
 
         # 获取服务器端的已解锁电影列表（避免重复解锁）
         print("自动解锁：正在获取服务器端的已解锁电影列表...")
-        paid_movies = get_all_paid_movies()
+        paid_state = await asyncio.to_thread(get_all_paid_movies_state)
+        if not paid_state["available"]:
+            print(
+                f"自动解锁：{paid_state['error']}，"
+                "无法排除重复解锁，停止执行"
+            )
+            return
+        paid_movies = paid_state["items"]
         print(f"自动解锁：服务器端已解锁电影数: {len(paid_movies)}")
 
         # 合并本地和服务器端的已解锁列表
         all_unlocked_movies = unlocked_movies | paid_movies
         print(f"自动解锁：总计已解锁电影数: {len(all_unlocked_movies)}")
-
-        current_month = datetime.now().strftime("%Y-%m")
-        monthly_stats = log["monthly_stats"].get(current_month, {
-            "total": 0,
-            "from_list": 0,
-            "list_ids": []
-        })
 
         # 片单任务完成后不再从片单获取
         movie_id = None
@@ -1488,13 +1591,22 @@ async def auto_daily_unlock(context: ContextTypes.DEFAULT_TYPE):
             page = 1
             max_pages = 10
             while not movie_id and page <= max_pages:
-                movie_lists = get_movie_lists(page=page, sort="favorite_count")
+                movie_lists = await asyncio.to_thread(
+                    get_movie_lists,
+                    page,
+                    "favorite_count",
+                )
                 if not movie_lists:
                     break
 
                 for ml in movie_lists:
                     list_id = ml.get("id")
-                    movie_id = find_unlocked_movie_from_list(list_id, all_unlocked_movies, paid_movies)
+                    movie_id = await asyncio.to_thread(
+                        find_unlocked_movie_from_list,
+                        list_id,
+                        all_unlocked_movies,
+                        paid_movies,
+                    )
                     if movie_id:
                         from_list = True
                         break
@@ -1507,7 +1619,11 @@ async def auto_daily_unlock(context: ContextTypes.DEFAULT_TYPE):
 
         # 如果片单中没找到，从推荐列表选择
         if not movie_id:
-            movie_id = find_unlocked_movie_from_recommend(all_unlocked_movies, paid_movies)
+            movie_id = await asyncio.to_thread(
+                find_unlocked_movie_from_recommend,
+                all_unlocked_movies,
+                paid_movies,
+            )
 
         if not movie_id:
             print("自动解锁：未找到可解锁的电影")
@@ -1516,13 +1632,26 @@ async def auto_daily_unlock(context: ContextTypes.DEFAULT_TYPE):
         # 执行解锁
         if from_list and list_id:
             print(f"自动解锁：正在解锁电影 ID: {movie_id} (来自片单: {list_id})")
-            success, error_msg = unlock_movie(movie_id, list_id=list_id)
+            success, error_msg = await asyncio.to_thread(
+                unlock_movie,
+                movie_id,
+                list_id=list_id,
+            )
         else:
             print(f"自动解锁：正在解锁电影 ID: {movie_id} (来自推荐列表)")
-            success, error_msg = unlock_movie(movie_id, list_id=None)
+            success, error_msg = await asyncio.to_thread(
+                unlock_movie,
+                movie_id,
+                list_id=None,
+            )
 
         if success:
-            save_unlock_record(movie_id, from_list, list_id)
+            await asyncio.to_thread(
+                save_unlock_record,
+                movie_id,
+                from_list,
+                list_id,
+            )
             print(f"自动解锁：成功解锁电影 {movie_id}")
 
             # 发送成功通知
@@ -1533,8 +1662,8 @@ async def auto_daily_unlock(context: ContextTypes.DEFAULT_TYPE):
                 msg = f"✅ **自动解锁成功**\n\n已解锁电影 ID: {movie_id}\n来源: {source}"
 
                 # 更新任务状态
-                time.sleep(1)
-                tasks = analyze_tasks()
+                await asyncio.sleep(1)
+                tasks = await asyncio.to_thread(analyze_tasks)
                 if tasks:
                     msg += "\n\n**当前任务进度：**\n"
                     for unique, info in tasks.items():
@@ -1551,7 +1680,7 @@ async def auto_daily_unlock(context: ContextTypes.DEFAULT_TYPE):
                     except Exception as e:
                         print(f"发送通知失败 (用户 {user_id}): {e}")
         else:
-            print(f"自动解锁：解锁失败")
+            print("自动解锁：解锁失败")
             if error_msg:
                 print(f"错误详情: {error_msg}")
 
@@ -1572,6 +1701,15 @@ async def auto_daily_unlock(context: ContextTypes.DEFAULT_TYPE):
                         print(f"发送通知失败 (用户 {user_id}): {e}")
     except Exception as e:
         print(f"自动解锁异常: {e}")
+
+
+async def auto_daily_unlock(context: ContextTypes.DEFAULT_TYPE):
+    """Serialize the scheduled unlock with purchases and manual actions."""
+    if FINANCIAL_ACTION_LOCK.locked():
+        print("自动解锁：已有购买或解锁操作正在执行，本轮跳过")
+        return
+    async with FINANCIAL_ACTION_LOCK:
+        await _auto_daily_unlock_unlocked(context)
 
 async def keep_alive_request(context: ContextTypes.DEFAULT_TYPE):
     """保活请求：定期获取片单列表，保持连接活跃"""
@@ -1726,9 +1864,9 @@ async def reauth_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def check_auth_and_notify(context: ContextTypes.DEFAULT_TYPE):
     """定时检查认证状态；失效时启动 Telegram 动态登录流程。"""
     try:
-        is_valid = await asyncio.to_thread(check_auth_valid)
+        state = await asyncio.to_thread(get_auth_state)
 
-        if not is_valid:
+        if state["auth_failed"]:
             config = load_json_file(CONFIG_FILE, {})
             user_ids = config.get("user_ids", ALLOWED_USER_IDS)
 
@@ -1738,6 +1876,8 @@ async def check_auth_and_notify(context: ContextTypes.DEFAULT_TYPE):
                     print(f"认证续期流程未完成: {message}")
             else:
                 print("认证失效：未找到用户列表，无法发送通知")
+        elif not state["available"]:
+            print(f"认证检查暂时不可用：{state['error']}（不会按掉线处理）")
         else:
             print("认证检查：认证有效")
     except Exception as e:
@@ -1768,7 +1908,7 @@ async def check_package_and_notify(context: ContextTypes.DEFAULT_TYPE):
             return
 
         # 发送通知
-        msg = f"⚠️ **资源包提醒**\n\n"
+        msg = "⚠️ **资源包提醒**\n\n"
         msg += f"全部有效包总剩余: {remaining} 次\n"
         msg += (
             f"剩余次数不足 {NOTIFICATION_THRESHOLD} 次；"
@@ -1857,7 +1997,7 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update and update.message:
         try:
             await update.message.reply_text("❌ 发生错误，请稍后重试")
-        except:
+        except Exception:
             pass
 
 def main():

@@ -105,8 +105,8 @@ wheels = [
 
 [[package]]
 name = "picix-live"
-version = "2.0.0"
-source = { virtual = "." }
+version = "2.1.0"
+source = { editable = "." }
 dependencies = [
     { name = "python-telegram-bot", extra = ["job-queue"] },
     { name = "requests" },

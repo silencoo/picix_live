@@ -1,0 +1,17 @@
+[Unit]
+Description=Picix Telegram Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/picix_live
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/local/bin/uv run --locked --env-file .env picix bot
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

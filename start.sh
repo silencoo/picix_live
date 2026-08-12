@@ -50,32 +50,32 @@ run_action() {
         bot)
             echo
             echo "Starting Telegram Bot..."
-            run_uv python -u -m picix_bot
+            run_uv picix bot
             ;;
         status)
             echo
             echo "Loading Picix status..."
-            run_uv python auto_unlock_helper.py status
+            run_uv picix status
             ;;
         unlock)
             echo
             echo "Running daily unlock..."
-            run_uv python auto_unlock_helper.py unlock
+            run_uv picix unlock
             ;;
         plan)
             echo
             echo "Calculating points optimization plan..."
-            run_uv python auto_unlock_helper.py plan
+            run_uv picix plan
             ;;
         optimize)
             echo
             echo "Running points optimization..."
-            run_uv python auto_unlock_helper.py optimize
+            run_uv picix optimize
             ;;
         token)
             echo
             echo "Checking Picix authorization..."
-            run_uv python check_token_expiry.py
+            run_uv picix token
             ;;
         sync)
             echo
