@@ -45,13 +45,14 @@ from .optimizer import build_optimization_plan
 from auto_unlock_helper import (
     AUTHORIZATION, BASE_URL, HEADERS, DATA_DIR,
     load_json_file, save_json_file, api_request,
-    get_task_list, get_unlock_log, analyze_tasks,
+    get_task_list, get_task_state, get_unlock_log, analyze_tasks,
     unlock_movie, get_movie_lists, get_movie_list_detail,
     get_recommend_movies, find_unlocked_movie_from_list,
     find_unlocked_movie_from_recommend, save_unlock_record,
-    get_point_history, get_all_paid_movies, check_auth_valid,
+    get_point_history, get_point_history_state, get_all_paid_movies, check_auth_valid,
     search_movies, get_movie_detail, get_paid_movies, accept_default_tasks,
     should_unlock_from_list, accept_task, get_purchasable_packages,
+    get_purchasable_package_state,
     get_package_list, request_login_code, check_login_code,
     update_authorization, get_package_info, get_package_summary,
     build_live_optimization_plan, execute_points_optimization,
@@ -78,6 +79,7 @@ AUTH_BOT_USERNAME = "vStreamingBot"
 AUTH_REAUTH_TIMEOUT_SECONDS = 10 * 60
 AUTH_REAUTH_COOLDOWN_SECONDS = 10 * 60
 AUTH_REAUTH_LOCK = asyncio.Lock()
+FINANCIAL_ACTION_LOCK = asyncio.Lock()
 
 def buy_package(good_id):
     """购买指定资源包"""
@@ -218,9 +220,12 @@ def format_optimization_report(report):
 def format_status_message():
     """格式化状态消息"""
     # 获取任务状态
-    tasks = analyze_tasks()
+    task_state = get_task_state()
+    if not task_state["available"]:
+        return f"⚠️ 状态暂不可用：{task_state['error']}\n\n没有把故障误判为任务清零。"
+    tasks = analyze_tasks(task_state["items"])
     if not tasks:
-        return "❌ 无法获取任务状态"
+        return "ℹ️ 任务接口正常，但当前没有任务数据"
 
     # 获取并汇总全部可用资源包
     package_summary = get_package_summary()
@@ -231,7 +236,8 @@ def format_status_message():
     )
 
     # 获取最新积分
-    point_history = get_point_history()
+    history_state = get_point_history_state()
+    point_history = history_state["items"]
     current_points = None
     if point_history and len(point_history) > 0:
         # 第一条记录是最新的，包含当前总积分
@@ -254,7 +260,10 @@ def format_status_message():
         msg += f"💰 **当前积分**: {current_points} 分\n\n"
 
     # 资源包信息
-    if package:
+    if not package_summary["available"]:
+        msg += f"📦 **资源包**: 暂不可用（{package_summary['error']}）\n"
+        msg += "ℹ️ 未将本次故障计作 0 次额度\n\n"
+    elif package:
         remaining = package_summary["remaining"]
         expired_at = package.get("expiredAt", 0)
         msg += "📦 **资源包**\n"
@@ -270,7 +279,7 @@ def format_status_message():
         if remaining <= NOTIFICATION_THRESHOLD:
             msg += f"⚠️ **警告**: 剩余次数不足，请及时购买资源包！\n\n"
     else:
-        msg += "📦 **资源包**: 未找到\n\n"
+        msg += "📦 **资源包**: 接口正常，当前确实没有可用额度\n\n"
 
     # 任务进度
     msg += "📋 **任务进度**\n"
@@ -318,13 +327,21 @@ def format_status_message():
     msg += f"任务奖励上限: {earned + potential} 分\n"
     msg += "注: 月任务奖励仅在达到门槛后计入\n"
 
-    plan = build_optimization_plan(
-        history=point_history,
-        packages=package_summary["all"],
-        tasks=tasks,
-        **_optimizer_options(),
-    )
-    msg += "\n" + format_optimization_plan(plan)
+    if history_state["available"] and package_summary["available"]:
+        plan = build_optimization_plan(
+            history=point_history,
+            packages=package_summary["all"],
+            tasks=tasks,
+            **_optimizer_options(),
+        )
+        msg += "\n" + format_optimization_plan(plan)
+    else:
+        reasons = []
+        if not history_state["available"]:
+            reasons.append(history_state["error"])
+        if not package_summary["available"]:
+            reasons.append(package_summary["error"])
+        msg += "\n🛑 **自动决策已暂停**\n" + "；".join(reasons)
 
     return msg
 
@@ -381,6 +398,13 @@ def _extract_package_fields(pkg):
     good_id = _first_value(pkg, ["goodId", "goodsId", "id"])
     price = _first_value(pkg, ["price", "point", "points", "amount", "cost", "coin"])
     total = _first_value(pkg, ["total", "count", "times", "quantity", "num", "quota"])
+    if total is None:
+        quota_values = []
+        for text in (desc, name):
+            for pattern in (r"(\d+)\s*次包", r"可解锁\s*(\d+)\s*个"):
+                quota_values.extend(int(value) for value in re.findall(pattern, str(text or "")))
+        if quota_values and len(set(quota_values)) == 1:
+            total = quota_values[0]
     valid_days = _first_value(pkg, ["validDays", "valid_day", "validDaysCount", "validTime"])
     status = _normalize_status(_first_value(pkg, ["status", "state", "isEnable", "enabled"]))
     return {
@@ -647,37 +671,48 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @check_permission
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /status 命令"""
-    await update.message.reply_text("⏳ 正在获取状态...")
+    progress = await update.message.reply_text("⏳ 正在获取状态...")
     try:
-        msg = format_status_message()
-        await update.message.reply_text(msg, parse_mode='Markdown')
+        msg = await asyncio.to_thread(format_status_message)
+        await progress.edit_text(msg, parse_mode='Markdown')
     except Exception as e:
-        await update.message.reply_text(f"❌ 获取状态失败: {str(e)}")
+        await progress.edit_text(f"❌ 获取状态失败: {str(e)}")
 
 @check_permission
 async def tasks_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /tasks 命令 - 查看任务列表并领取"""
-    await update.message.reply_text("⏳ 正在获取任务列表...")
+    progress = await update.message.reply_text("⏳ 正在获取任务列表...")
     try:
-        tasks = get_task_list()
+        state = await asyncio.to_thread(get_task_state)
+        if not state["available"]:
+            await progress.edit_text(f"⚠️ 任务状态暂不可用：{state['error']}")
+            return
+        tasks = state["items"]
         if not tasks:
-            await update.message.reply_text("❌ 未获取到任务列表")
+            await progress.edit_text("ℹ️ 任务接口正常，但当前没有任务")
             return
         msg, keyboard = _build_tasks_message(tasks)
-        await update.message.reply_text(msg, parse_mode='Markdown', reply_markup=keyboard)
+        await progress.edit_text(msg, parse_mode='Markdown', reply_markup=keyboard)
     except Exception as e:
-        await update.message.reply_text(f"❌ 获取任务列表失败: {str(e)}")
+        await progress.edit_text(f"❌ 获取任务列表失败: {str(e)}")
 
 @check_permission
 async def package_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /package 命令"""
-    await update.message.reply_text("⏳ 正在获取资源包信息...")
+    progress = await update.message.reply_text("⏳ 正在获取资源包信息...")
     try:
-        packages = get_package_list()
-        package = packages[0] if packages else None
+        summary = await asyncio.to_thread(get_package_summary)
+        if not summary["available"]:
+            await progress.edit_text(
+                f"⚠️ 资源包状态暂不可用：{summary['error']}\n"
+                "没有把本次故障显示为 0 次。"
+            )
+            return
+        packages = summary["all"]
+        package = summary["active"][0]["raw"] if summary["active"] else None
 
         if not package:
-            await update.message.reply_text("❌ 未找到资源包信息")
+            await progress.edit_text("ℹ️ 接口正常，当前确实没有可用资源包")
             return
 
         remaining = package.get("total", 0) - package.get("used", 0)
@@ -733,50 +768,69 @@ async def package_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     msg += f"   过期时间: {exp_at}\n"
             msg += "\n"
 
-        await update.message.reply_text(msg.rstrip(), parse_mode='Markdown')
+        await progress.edit_text(msg.rstrip(), parse_mode='Markdown')
     except Exception as e:
-        await update.message.reply_text(f"❌ 获取资源包信息失败: {str(e)}")
+        await progress.edit_text(f"❌ 获取资源包信息失败: {str(e)}")
 
 @check_permission
 async def shop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /shop 命令 - 查看可购买商品"""
-    await update.message.reply_text("⏳ 正在获取可购买商品...")
+    progress = await update.message.reply_text("⏳ 正在获取可购买商品...")
     try:
-        packages, _, _ = get_purchasable_packages()
-        msg, keyboard = _build_shop_message(packages)
-        await update.message.reply_text(msg, parse_mode='Markdown', reply_markup=keyboard)
+        state = await asyncio.to_thread(get_purchasable_package_state)
+        if not state["available"]:
+            await progress.edit_text(
+                f"⚠️ 商城暂不可用：{state['error']}\n"
+                "这不表示商品为空，请稍后重试。"
+            )
+            return
+        msg, keyboard = _build_shop_message(state["items"])
+        await progress.edit_text(msg, parse_mode='Markdown', reply_markup=keyboard)
     except Exception as e:
-        await update.message.reply_text(f"❌ 获取商品列表失败: {str(e)}")
+        await progress.edit_text(f"❌ 获取商品列表失败: {str(e)}")
 
 @check_permission
 async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /unlock 命令"""
-    await update.message.reply_text("⏳ 正在执行解锁任务...")
+    progress = await update.message.reply_text("⏳ 正在检查任务、额度和登录状态...")
     try:
+        task_state, package_summary = await asyncio.gather(
+            asyncio.to_thread(get_task_state),
+            asyncio.to_thread(get_package_summary),
+        )
+        if not task_state["available"]:
+            await progress.edit_text(f"🛑 已停止解锁：{task_state['error']}")
+            return
+        if not package_summary["available"]:
+            await progress.edit_text(
+                f"🛑 已停止解锁：{package_summary['error']}。"
+                "无法确认额度时不会尝试解锁或购包。"
+            )
+            return
+        if package_summary["remaining"] <= 0:
+            await progress.edit_text("❌ 已确认资源包次数为 0，请先通过 /shop 购买")
+            return
+
         # 领取常用任务（避免未领取导致进度异常）
-        accept_results = accept_default_tasks()
+        accept_results = await asyncio.to_thread(accept_default_tasks)
         failed_accepts = [
             u for u, info in accept_results.items()
             if info.get("status") == "failed"
         ]
         if failed_accepts:
-            await update.message.reply_text(
+            await progress.edit_text(
                 f"⚠️ 任务领取失败: {', '.join(failed_accepts)}\n"
                 "将继续尝试解锁，如有异常请检查任务页。"
             )
 
-        # 检查资源包
-        package = get_package_info()
-        if package:
-            remaining = package.get("total", 0) - package.get("used", 0)
-            if remaining <= 0:
-                await update.message.reply_text("❌ 资源包已用完，请先购买资源包！")
-                return
-
         # 分析任务状态
-        tasks = analyze_tasks()
+        refreshed_task_state = await asyncio.to_thread(get_task_state)
+        if not refreshed_task_state["available"]:
+            await progress.edit_text(f"🛑 已停止解锁：{refreshed_task_state['error']}")
+            return
+        tasks = analyze_tasks(refreshed_task_state["items"])
         if not tasks:
-            await update.message.reply_text("❌ 无法获取任务状态")
+            await progress.edit_text("❌ 任务接口正常，但无法解析当前任务")
             return
 
         # 检查每日任务是否已完成（仅提示，不阻止继续解锁）
@@ -788,13 +842,13 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE):
             monthly_task = tasks.get("M_UL_50")
             if monthly_task and not monthly_task["is_finish"]:
                 # 每日任务已完成，但月常任务未完成，允许继续解锁
-                await update.message.reply_text(
+                await progress.edit_text(
                     "✅ 今日每日任务已完成\n"
                     "📋 但月常任务未完成，继续解锁以完成月常任务..."
                 )
             else:
                 # 所有任务都完成了
-                await update.message.reply_text("✅ 今日每日任务已完成，所有任务已完成！")
+                await progress.edit_text("✅ 今日每日任务已完成，所有任务已完成！")
                 return
 
         # 获取解锁记录
@@ -802,9 +856,8 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE):
         unlocked_movies = set(log["unlocked_movies"])
 
         # 获取服务器端的已解锁电影列表（避免重复解锁）
-        await update.message.reply_text("⏳ 正在获取服务器端的已解锁电影列表...")
-        from auto_unlock_helper import get_all_paid_movies
-        paid_movies = get_all_paid_movies()
+        await progress.edit_text("⏳ 状态正常，正在选择一部未解锁影片...")
+        paid_movies = await asyncio.to_thread(get_all_paid_movies)
 
         # 合并本地和服务器端的已解锁列表
         all_unlocked_movies = unlocked_movies | paid_movies
@@ -828,13 +881,20 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE):
             page = 1
             max_pages = 10  # 最多检查10页，避免无限循环
             while not movie_id and page <= max_pages:
-                movie_lists = get_movie_lists(page=page, sort="favorite_count")
+                movie_lists = await asyncio.to_thread(
+                    get_movie_lists, page=page, sort="favorite_count"
+                )
                 if not movie_lists:  # 没有更多片单了
                     break
 
                 for ml in movie_lists:
                     list_id = ml.get("id")
-                    movie_id = find_unlocked_movie_from_list(list_id, all_unlocked_movies, paid_movies)
+                    movie_id = await asyncio.to_thread(
+                        find_unlocked_movie_from_list,
+                        list_id,
+                        all_unlocked_movies,
+                        paid_movies,
+                    )
                     if movie_id:
                         from_list = True
                         break
@@ -843,43 +903,51 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     break
                 page += 1
         else:
-            await update.message.reply_text("✅ 片单任务已完成，改从推荐列表解锁...")
+            await progress.edit_text("⏳ 片单任务已完成，正在从推荐列表选择影片...")
 
         # 如果所有片单都找完了还没找到，再从推荐列表选择（作为最后备选）
         if not movie_id:
-            movie_id = find_unlocked_movie_from_recommend(all_unlocked_movies, paid_movies)
+            movie_id = await asyncio.to_thread(
+                find_unlocked_movie_from_recommend,
+                all_unlocked_movies,
+                paid_movies,
+            )
 
         if not movie_id:
-            await update.message.reply_text("❌ 未找到可解锁的电影")
+            await progress.edit_text("❌ 未找到可解锁的电影")
             return
 
         # 执行解锁
         source = f"片单{list_id}" if from_list else "推荐"
-        await update.message.reply_text(f"🔓 正在解锁电影 ID: {movie_id} (来源: {source})...")
+        await progress.edit_text(f"🔓 正在解锁电影 ID: {movie_id}（来源：{source}）...")
 
-        success, error_msg = unlock_movie(movie_id, list_id=list_id if from_list else None)
+        success, error_msg = await asyncio.to_thread(
+            unlock_movie,
+            movie_id,
+            list_id=list_id if from_list else None,
+        )
 
         if success:
-            save_unlock_record(movie_id, from_list, list_id)
-            time.sleep(1)  # 等待服务器更新
+            await asyncio.to_thread(save_unlock_record, movie_id, from_list, list_id)
+            await asyncio.sleep(1)  # 等待服务器更新
 
             # 更新任务状态
-            tasks = analyze_tasks()
+            tasks = await asyncio.to_thread(analyze_tasks)
             if tasks:
                 msg = "✅ **解锁成功！**\n\n**更新后的任务进度：**\n"
                 for unique, info in tasks.items():
                     status_icon = "✅" if info["is_finish"] else "⏳"
                     msg += f"{status_icon} {info['name']}: {info['current']}/{info['target']}\n"
-                await update.message.reply_text(msg, parse_mode='Markdown')
+                await progress.edit_text(msg, parse_mode='Markdown')
             else:
-                await update.message.reply_text("✅ 解锁成功！")
+                await progress.edit_text("✅ 解锁成功！")
         else:
             # 显示详细的错误信息
             error_detail = error_msg if error_msg else "未知错误"
             msg = f"❌ **解锁失败**\n\n{error_detail}\n\n**请检查：**\n• 资源包是否还有剩余次数\n• 网络连接是否正常\n• 电影ID是否有效"
-            await update.message.reply_text(msg, parse_mode='Markdown')
+            await progress.edit_text(msg, parse_mode='Markdown')
     except Exception as e:
-        await update.message.reply_text(f"❌ 执行解锁失败: {str(e)}")
+        await progress.edit_text(f"❌ 执行解锁失败: {str(e)}")
 
 @check_permission
 async def force_unlock_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1072,8 +1140,14 @@ async def handle_movie_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     if data.startswith("shopbuy:"):
         await query.answer()
         good_id = data.split(":", 1)[1]
-        packages, _, _ = get_purchasable_packages()
-        pkg = _find_package_by_good_id(packages, good_id)
+        state = await asyncio.to_thread(get_purchasable_package_state)
+        if not state["available"]:
+            await query.message.reply_text(f"⚠️ 商城暂不可用：{state['error']}，请稍后重试")
+            return
+        pkg = _find_package_by_good_id(state["items"], good_id)
+        if not pkg:
+            await query.message.reply_text("⚠️ 该商品已不在当前商城列表中，请重新发送 /shop")
+            return
         text, keyboard = _build_shop_confirm_message(good_id, pkg)
         await query.message.reply_text(text, parse_mode='Markdown', reply_markup=keyboard)
         return
@@ -1081,7 +1155,21 @@ async def handle_movie_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     if data.startswith("shopconfirm:"):
         await query.answer()
         good_id = data.split(":", 1)[1]
-        success, msg = buy_package(good_id)
+        if FINANCIAL_ACTION_LOCK.locked():
+            await query.message.reply_text("⏳ 另一个购买或优化操作正在执行，请勿重复点击")
+            return
+        async with FINANCIAL_ACTION_LOCK:
+            state = await asyncio.to_thread(get_purchasable_package_state)
+            if not state["available"]:
+                await query.message.reply_text(
+                    f"🛑 购买已取消：{state['error']}。无法确认商品状态时不会扣分。"
+                )
+                return
+            pkg = _find_package_by_good_id(state["items"], good_id)
+            if not pkg:
+                await query.message.reply_text("🛑 购买已取消：商品已下架或商城数据已变化")
+                return
+            success, msg = await asyncio.to_thread(buy_package, good_id)
         if success:
             detail_msg = f"✅ 购买成功: {msg}" if msg else "✅ 购买成功"
             await query.message.reply_text(detail_msg)
@@ -1163,12 +1251,16 @@ async def handle_movie_action(update: Update, context: ContextTypes.DEFAULT_TYPE
 @check_permission
 async def point_history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /history 或 /points 命令 - 显示积分历史"""
-    await update.message.reply_text("⏳ 正在获取积分历史...")
+    progress = await update.message.reply_text("⏳ 正在获取积分历史...")
     try:
-        history = get_point_history()
+        state = await asyncio.to_thread(get_point_history_state)
+        if not state["available"]:
+            await progress.edit_text(f"⚠️ 积分记录暂不可用：{state['error']}")
+            return
+        history = state["items"]
 
         if not history:
-            await update.message.reply_text("❌ 未找到积分历史记录")
+            await progress.edit_text("ℹ️ 积分接口正常，但当前没有历史记录")
             return
 
         # 获取当前积分（第一条记录）
@@ -1205,43 +1297,47 @@ async def point_history_command(update: Update, context: ContextTypes.DEFAULT_TY
         if len(history) > 10:
             msg += f"... 共 {len(history)} 条记录（仅显示最近10条）"
 
-        await update.message.reply_text(msg, parse_mode='Markdown')
+        await progress.edit_text(msg, parse_mode='Markdown')
     except Exception as e:
-        await update.message.reply_text(f"❌ 获取积分历史失败: {str(e)}")
+        await progress.edit_text(f"❌ 获取积分历史失败: {str(e)}")
 
 
 @check_permission
 async def plan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """显示计划，不执行购买或解锁。"""
-    await update.message.reply_text("⏳ 正在计算积分最大化计划...")
+    progress = await update.message.reply_text("⏳ 正在计算积分最大化计划...")
     try:
         plan = await asyncio.to_thread(
             build_live_optimization_plan,
             **_optimizer_options(),
         )
-        await update.message.reply_text(
+        await progress.edit_text(
             format_optimization_plan(plan),
             parse_mode="Markdown",
         )
     except Exception as error:
-        await update.message.reply_text(f"❌ 生成计划失败: {error}")
+        await progress.edit_text(f"❌ 生成计划失败: {error}")
 
 
 @check_permission
 async def optimize_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """立即执行一次与定时任务相同的积分优化流程。"""
-    await update.message.reply_text("⏳ 正在执行积分最大化方案...")
+    progress = await update.message.reply_text("⏳ 正在执行积分最大化方案...")
+    if FINANCIAL_ACTION_LOCK.locked():
+        await progress.edit_text("⏳ 已有购买或优化操作正在执行，请稍后再试")
+        return
     try:
-        report = await asyncio.to_thread(
-            execute_points_optimization,
-            **_execution_options(),
-        )
-        await update.message.reply_text(
+        async with FINANCIAL_ACTION_LOCK:
+            report = await asyncio.to_thread(
+                execute_points_optimization,
+                **_execution_options(),
+            )
+        await progress.edit_text(
             format_optimization_report(report),
             parse_mode="Markdown",
         )
     except Exception as error:
-        await update.message.reply_text(f"❌ 自动优化失败: {error}")
+        await progress.edit_text(f"❌ 自动优化失败: {error}")
 
 
 @check_permission
@@ -1278,11 +1374,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def auto_points_optimizer(context: ContextTypes.DEFAULT_TYPE):
     """定时执行积分最大化计划，并只在有动作或异常时通知。"""
+    if FINANCIAL_ACTION_LOCK.locked():
+        print("自动积分优化：已有购买或优化操作正在执行，本轮跳过")
+        return
     try:
-        report = await asyncio.to_thread(
-            execute_points_optimization,
-            **_execution_options(),
-        )
+        async with FINANCIAL_ACTION_LOCK:
+            report = await asyncio.to_thread(
+                execute_points_optimization,
+                **_execution_options(),
+            )
         purchases = report.get("purchases") or []
         unlock_result = report.get("unlock_result") or {}
         has_action = bool(purchases or unlock_result.get("successes"))
@@ -1336,26 +1436,27 @@ async def auto_daily_unlock(context: ContextTypes.DEFAULT_TYPE):
             return
 
         # 检查资源包
-        package = get_package_info()
-        if package:
-            remaining = package.get("total", 0) - package.get("used", 0)
-            if remaining <= 0:
-                print("自动解锁：资源包已用完，无法执行")
-                # 发送通知
-                config = load_json_file(CONFIG_FILE, {})
-                user_ids = config.get("user_ids", ALLOWED_USER_IDS)
-                if user_ids:
-                    msg = "⚠️ **自动解锁失败**\n\n资源包已用完，请先购买资源包！"
-                    for user_id in user_ids:
-                        try:
-                            await context.bot.send_message(
-                                chat_id=user_id,
-                                text=msg,
-                                parse_mode='Markdown'
-                            )
-                        except Exception as e:
-                            print(f"发送通知失败 (用户 {user_id}): {e}")
-                return
+        package_summary = get_package_summary()
+        if not package_summary["available"]:
+            print(f"自动解锁：资源包状态不可用，停止执行：{package_summary['error']}")
+            return
+        if package_summary["remaining"] <= 0:
+            print("自动解锁：已确认资源包次数为 0，无法执行")
+            # 发送通知
+            config = load_json_file(CONFIG_FILE, {})
+            user_ids = config.get("user_ids", ALLOWED_USER_IDS)
+            if user_ids:
+                msg = "⚠️ **自动解锁失败**\n\n资源包已用完，请先购买资源包！"
+                for user_id in user_ids:
+                    try:
+                        await context.bot.send_message(
+                            chat_id=user_id,
+                            text=msg,
+                            parse_mode='Markdown'
+                        )
+                    except Exception as e:
+                        print(f"发送通知失败 (用户 {user_id}): {e}")
+            return
 
         # 执行解锁逻辑（复用 unlock 函数的逻辑）
         log = get_unlock_log()
@@ -1476,7 +1577,9 @@ async def keep_alive_request(context: ContextTypes.DEFAULT_TYPE):
     """保活请求：定期获取片单列表，保持连接活跃"""
     try:
         # 获取片单列表（简单的保活请求）
-        movie_lists = get_movie_lists(page=1, sort="favorite_count")
+        movie_lists = await asyncio.to_thread(
+            get_movie_lists, page=1, sort="favorite_count"
+        )
         if movie_lists:
             print(f"保活请求成功：获取到 {len(movie_lists)} 个片单")
         else:
@@ -1644,7 +1747,10 @@ async def check_auth_and_notify(context: ContextTypes.DEFAULT_TYPE):
 
 async def check_package_and_notify(context: ContextTypes.DEFAULT_TYPE):
     """定时检查资源包并发送通知"""
-    summary = get_package_summary()
+    summary = await asyncio.to_thread(get_package_summary)
+    if not summary["available"]:
+        print(f"资源包检查跳过：{summary['error']}（不会按 0 次通知）")
+        return
     remaining = summary["remaining"]
 
     # 检查是否需要通知

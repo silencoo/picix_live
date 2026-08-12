@@ -5,6 +5,7 @@ import io
 import json
 import logging
 import os
+import re
 from logging.handlers import RotatingFileHandler
 import time
 from datetime import datetime, timedelta
@@ -69,6 +70,48 @@ HEADERS = {
     "sec-fetch-site": "same-origin",
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
 }
+
+REQUEST_TIMEOUT_SECONDS = 20
+
+
+def _api_failure(result, fallback="Picix API 暂时不可用"):
+    """Return a user-facing error when an API response is not trustworthy."""
+    if result is None:
+        return {
+            "available": False,
+            "auth_failed": False,
+            "retryable": True,
+            "error": fallback,
+        }
+    if not isinstance(result, dict):
+        return {
+            "available": False,
+            "auth_failed": False,
+            "retryable": False,
+            "error": "Picix API 返回了无法识别的数据格式",
+        }
+    if result.get("_auth_failed"):
+        return {
+            "available": False,
+            "auth_failed": True,
+            "retryable": False,
+            "error": "Picix 登录已失效，请先重新认证",
+        }
+    if result.get("_request_failed"):
+        return {
+            "available": False,
+            "auth_failed": False,
+            "retryable": bool(result.get("_retryable")),
+            "error": result.get("_error") or result.get("msg") or fallback,
+        }
+    if not result.get("success"):
+        return {
+            "available": False,
+            "auth_failed": False,
+            "retryable": False,
+            "error": result.get("msg") or fallback,
+        }
+    return None
 
 def load_json_file(filepath, default=None):
     """加载JSON文件"""
@@ -179,12 +222,22 @@ def api_request(method, endpoint, data=None, params=None):
             print(f"日志记录请求失败: {log_error}")
 
         if method.upper() == "GET":
-            response = requests.get(url, headers=HEADERS, params=params)
+            response = requests.get(
+                url,
+                headers=HEADERS,
+                params=params,
+                timeout=REQUEST_TIMEOUT_SECONDS,
+            )
         elif method.upper() == "POST":
             headers = HEADERS.copy()
             headers["content-type"] = "application/json"
             headers["origin"] = "https://picix.us"
-            response = requests.post(url, headers=headers, json=data)
+            response = requests.post(
+                url,
+                headers=headers,
+                json=data,
+                timeout=REQUEST_TIMEOUT_SECONDS,
+            )
         else:
             return None
 
@@ -227,19 +280,61 @@ def api_request(method, endpoint, data=None, params=None):
         else:
             print(f"API请求失败: HTTP {response.status_code}")
             print(f"响应内容: {json.dumps(result, ensure_ascii=False, indent=2) if isinstance(result, dict) else response.text}")
-            return result  # 即使状态码不是200，也返回解析后的结果，让调用者处理
+            if not isinstance(result, dict):
+                result = {"data": result}
+            result["_request_failed"] = True
+            result["_http_status"] = response.status_code
+            result["_retryable"] = bool(
+                result.get("retryable")
+                or response.status_code in {408, 425, 429, 500, 502, 503, 504, 522}
+            )
+            result["_error"] = (
+                result.get("msg")
+                or result.get("title")
+                or f"Picix API 请求失败（HTTP {response.status_code}）"
+            )
+            return result
     except Exception as e:
         print(f"请求异常: {e}")
-        import traceback
-        print(f"详细错误: {traceback.format_exc()}")
-        return None
+        logger.exception("REQUEST_ERROR | method=%s url=%s", method.upper(), url)
+        return {
+            "success": False,
+            "_request_failed": True,
+            "_retryable": True,
+            "_error": f"Picix API 连接失败：{e}",
+        }
+
+def _get_list_api_state(endpoint, label):
+    result = api_request("GET", endpoint)
+    failure = _api_failure(result, f"暂时无法读取{label}")
+    if failure:
+        return {**failure, "items": []}
+    items = result.get("data")
+    if not isinstance(items, list):
+        return {
+            "available": False,
+            "auth_failed": False,
+            "retryable": False,
+            "error": f"{label}接口返回格式已变化",
+            "items": [],
+        }
+    return {
+        "available": True,
+        "auth_failed": False,
+        "retryable": False,
+        "error": "",
+        "items": items,
+    }
+
+
+def get_task_state():
+    return _get_list_api_state("/Tasks/list", "任务")
+
 
 def get_task_list():
-    """获取任务列表"""
-    result = api_request("GET", "/Tasks/list")
-    if result and result.get("success"):
-        return result.get("data", [])
-    return []
+    """获取任务列表；兼容旧调用方，关键决策应改用 get_task_state。"""
+    state = get_task_state()
+    return state["items"] if state["available"] else []
 
 def accept_task(unique):
     """领取任务"""
@@ -374,12 +469,14 @@ def get_movie_detail(movie_id):
         return result.get("data", {})
     return {}
 
+def get_point_history_state():
+    return _get_list_api_state("/Users/listPointHistory", "积分记录")
+
+
 def get_point_history():
-    """获取积分历史记录"""
-    result = api_request("GET", "/Users/listPointHistory")
-    if result and result.get("success"):
-        return result.get("data", [])
-    return []
+    """获取积分历史记录；兼容旧调用方。"""
+    state = get_point_history_state()
+    return state["items"] if state["available"] else []
 
 def get_paid_movies(page=1):
     """获取已购买/已解锁的电影列表（从服务器端）"""
@@ -436,19 +533,41 @@ def get_package_info():
         return active[0]["raw"]
     return None
 
+def get_package_state():
+    """读取个人资源包，并保留“无数据”和“请求失败”的区别。"""
+    result = api_request("GET", "/Packages/listMine")
+    failure = _api_failure(result, "暂时无法读取资源包")
+    if failure:
+        return {**failure, "packages": []}
+
+    packages = result.get("data")
+    if not isinstance(packages, list):
+        return {
+            "available": False,
+            "auth_failed": False,
+            "retryable": False,
+            "error": "资源包接口返回格式已变化",
+            "packages": [],
+        }
+    return {
+        "available": True,
+        "auth_failed": False,
+        "retryable": False,
+        "error": "",
+        "packages": packages,
+    }
+
+
 def get_package_list():
     """获取个人资源包列表"""
-    result = api_request("GET", "/Packages/listMine")
-    if result and result.get("success"):
-        packages = result.get("data", [])
-        if isinstance(packages, list):
-            return packages
-    return []
+    state = get_package_state()
+    return state["packages"] if state["available"] else []
 
 
 def get_package_summary():
     """汇总所有未过期资源包，避免只读取第一包导致误购。"""
-    packages = get_package_list()
+    state = get_package_state()
+    packages = state["packages"]
     remaining, active = summarize_packages(
         packages,
         now=datetime.now().astimezone(),
@@ -457,6 +576,10 @@ def get_package_summary():
         "remaining": remaining,
         "active": active,
         "all": packages,
+        "available": state["available"],
+        "auth_failed": state["auth_failed"],
+        "retryable": state["retryable"],
+        "error": state["error"],
     }
 
 def _first_value(data, keys, default=None):
@@ -496,8 +619,28 @@ def _extract_package_items(data):
             return [data]
     return []
 
-def get_purchasable_packages():
-    """获取可购买资源包列表"""
+
+def _infer_package_quota(package):
+    """读取商品次数；当前线上接口仅在 desc 中返回“30次包”。"""
+    explicit = _first_value(
+        package,
+        ["total", "count", "times", "quantity", "num", "quota"],
+    )
+    if explicit is not None:
+        return explicit
+
+    candidates = []
+    for key in ("desc", "description", "remark", "note", "name", "title"):
+        text = str(package.get(key) or "")
+        for pattern in (r"(\d+)\s*次包", r"可解锁\s*(\d+)\s*个"):
+            candidates.extend(int(value) for value in re.findall(pattern, text))
+    if candidates and len(set(candidates)) == 1:
+        return candidates[0]
+    return None
+
+
+def get_purchasable_package_state():
+    """读取商城商品，并保留认证、临时故障和真实空列表状态。"""
     endpoints = [
         ("/Malls/listGoods", None),
         ("/Malls/listGoods", {"type": "package"}),
@@ -505,16 +648,61 @@ def get_purchasable_packages():
         ("/Packages/list", None),
         ("/Packages/listAll", None),
     ]
+    failures = []
     for endpoint, params in endpoints:
         result = api_request("GET", endpoint, params=params)
-        if not result:
+        failure = _api_failure(result, "暂时无法读取商城商品")
+        if failure:
+            failures.append(failure)
+            if failure["auth_failed"]:
+                break
             continue
-        if result.get("success"):
-            data = result.get("data")
-            items = _extract_package_items(data)
-            if items or data == []:
-                return items, endpoint, params
-    return [], None, None
+
+        data = result.get("data")
+        items = _extract_package_items(data)
+        known_keys = {
+            "package", "inviteCode", "redeemCode", "list", "items",
+            "rows", "data", "goods", "packages",
+        }
+        recognized_empty = (
+            data == []
+            or (isinstance(data, dict) and (not data or bool(known_keys & data.keys())))
+        )
+        if items or recognized_empty:
+            return {
+                "available": True,
+                "auth_failed": False,
+                "retryable": False,
+                "error": "",
+                "items": items,
+                "endpoint": endpoint,
+                "params": params,
+            }
+        failures.append(
+            {
+                "available": False,
+                "auth_failed": False,
+                "retryable": False,
+                "error": "商城接口返回格式已变化",
+            }
+        )
+
+    failure = next(
+        (item for item in failures if item.get("auth_failed")),
+        failures[0] if failures else _api_failure(None),
+    )
+    return {
+        **failure,
+        "items": [],
+        "endpoint": None,
+        "params": None,
+    }
+
+
+def get_purchasable_packages():
+    """获取可购买资源包列表"""
+    state = get_purchasable_package_state()
+    return state["items"], state["endpoint"], state["params"]
 
 def show_purchasable_packages():
     """显示可购买资源包"""
@@ -539,7 +727,7 @@ def show_purchasable_packages():
         desc = _first_value(pkg, ["desc", "description", "remark", "note"])
         good_id = _first_value(pkg, ["goodId", "goodsId", "id"])
         price = _first_value(pkg, ["price", "point", "points", "amount", "cost", "coin"])
-        total = _first_value(pkg, ["total", "count", "times", "quantity", "num", "quota"])
+        total = _infer_package_quota(pkg)
         status = _first_value(pkg, ["status", "state", "isEnable", "enabled"])
 
         header = f"{idx}. {name}" if name else f"{idx}. 资源包"
@@ -556,9 +744,12 @@ def show_purchasable_packages():
         if status is not None:
             print(f"  状态: {status}")
 
-def find_purchasable_package(good_id):
+def find_purchasable_package(good_id, state=None):
     """查找指定商品，并返回可用于购买前校验的标准字段。"""
-    packages, endpoint, params = get_purchasable_packages()
+    state = state or get_purchasable_package_state()
+    packages = state["items"] if state["available"] else []
+    endpoint = state.get("endpoint")
+    params = state.get("params")
     expected_id = str(good_id)
     for package in packages:
         actual_id = _first_value(package, ["goodId", "goodsId", "id"])
@@ -569,9 +760,7 @@ def find_purchasable_package(good_id):
             "price": _first_value(
                 package, ["price", "point", "points", "amount", "cost", "coin"]
             ),
-            "quota": _first_value(
-                package, ["total", "count", "times", "quantity", "num", "quota"]
-            ),
+            "quota": _infer_package_quota(package),
             "name": _first_value(
                 package,
                 ["name", "title", "goodsName", "goodName", "packageName"],
@@ -585,7 +774,11 @@ def find_purchasable_package(good_id):
 
 def validate_purchasable_package(good_id, expected_price, expected_quota):
     """购买前核对商品 ID、价格和次数，防止接口变化造成误扣。"""
-    package = find_purchasable_package(good_id)
+    state = get_purchasable_package_state()
+    if not state["available"]:
+        return False, f"{state['error']}，已禁止自动购买", None
+
+    package = find_purchasable_package(good_id, state=state)
     if not package:
         return False, "商城中未找到配置的轻量包，已禁止自动购买", None
 
@@ -637,26 +830,25 @@ def ensure_package_and_unlock():
     print("=" * 60)
 
     # 1. 检查资源包状态
-    package = get_package_info()
-    need_buy = False
+    summary = get_package_summary()
+    if not summary["available"]:
+        print(f"❌ {summary['error']}。状态不确定，禁止自动购买")
+        return False
 
-    if package:
-        total = package.get("total", 0)
-        used = package.get("used", 0)
-        remaining = total - used
-        print(f"当前资源包: 总计 {total} / 已用 {used} / 剩余 {remaining}")
-
-        if remaining <= 0:
-            print("⚠️ 资源包已用完，需要购买")
-            need_buy = True
-        else:
-            print("✓ 资源包充足，无需购买")
+    remaining = summary["remaining"]
+    need_buy = remaining <= 0
+    print(f"当前全部有效资源包剩余: {remaining}")
+    if need_buy:
+        print("⚠️ 已确认资源包次数为 0，需要购买")
     else:
-        print("⚠️ 未找到资源包信息，尝试购买")
-        need_buy = True
+        print("✓ 资源包充足，无需购买")
 
     # 2. 如果需要，执行购买
     if need_buy:
+        valid, reason, _ = validate_purchasable_package("1", 450, 30)
+        if not valid:
+            print(f"❌ {reason}")
+            return False
         success, msg = buy_lightweight_package()
         if not success:
             print(f"❌ 无法购买资源包，终止流程: {msg}")
@@ -664,17 +856,20 @@ def ensure_package_and_unlock():
 
         # 购买成功后，稍作等待并重新检查（可选）
         time.sleep(2)
-        package = get_package_info()
-        if package:
-            print(f"购买后状态: 剩余 {package.get('total', 0) - package.get('used', 0)}")
+        summary = get_package_summary()
+        if not summary["available"] or summary["remaining"] <= 0:
+            print("❌ 购买后未能确认额度到账，终止解锁")
+            return False
+        print(f"购买后状态: 剩余 {summary['remaining']}")
 
     # 3. 执行每日解锁
     return daily_unlock()
 
 
-def analyze_tasks():
+def analyze_tasks(tasks=None):
     """分析任务状态"""
-    tasks = get_task_list()
+    if tasks is None:
+        tasks = get_task_list()
     if not tasks:
         print("无法获取任务列表")
         return None
@@ -828,6 +1023,14 @@ def unlock_movies_batch(count, *, prefer_list=True):
     """批量解锁并返回结构化结果，供手动命令和自动优化共用。"""
     requested = max(0, int(count))
     summary = get_package_summary()
+    if not summary["available"]:
+        return {
+            "requested": requested,
+            "attempted": 0,
+            "successes": [],
+            "failure": f"{summary['error']}；无法确认额度，已停止解锁",
+            "available_before": None,
+        }
     available = summary["remaining"]
     target = min(requested, available)
     result = {
@@ -893,10 +1096,28 @@ def unlock_movies_batch(count, *, prefer_list=True):
 
 def build_live_optimization_plan(**options):
     """读取实时状态并生成积分优化计划。"""
+    task_state = get_task_state()
+    history_state = get_point_history_state()
+    package_state = get_package_state()
+    failures = [
+        f"{label}状态不可用：{state['error']}"
+        for label, state in (
+            ("任务", task_state),
+            ("积分", history_state),
+            ("资源包", package_state),
+        )
+        if not state["available"]
+    ]
+    if failures:
+        raise RuntimeError("；".join(failures))
+
+    tasks = analyze_tasks(task_state["items"])
+    if not tasks or not history_state["items"]:
+        raise RuntimeError("任务或积分记录为空，无法生成可靠计划")
     return build_optimization_plan(
-        history=get_point_history(),
-        packages=get_package_list(),
-        tasks=analyze_tasks() or {},
+        history=history_state["items"],
+        packages=package_state["packages"],
+        tasks=tasks,
         **options,
     )
 
@@ -935,6 +1156,23 @@ def execute_points_optimization(
         "messages": [],
     }
 
+    # 所有会影响购买决策的数据必须明确可用。空列表可能是真空，也可能是
+    # 401/522/超时；在确认状态前不领取任务、更不允许购买。
+    task_state = get_task_state()
+    history_state = get_point_history_state()
+    package_state = get_package_state()
+    unavailable = [
+        ("任务", task_state),
+        ("积分", history_state),
+        ("资源包", package_state),
+    ]
+    for label, state in unavailable:
+        if not state["available"]:
+            report["messages"].append(f"{label}状态不可用：{state['error']}")
+    if report["messages"]:
+        report["messages"].append("状态不确定，本次不会购买或解锁")
+        return report
+
     accept_results = accept_default_tasks()
     failed_accepts = [
         unique
@@ -946,15 +1184,22 @@ def execute_points_optimization(
             f"以下任务领取失败：{', '.join(failed_accepts)}"
         )
 
-    tasks = analyze_tasks()
-    history = get_point_history()
+    # 领取任务后重新读取，避免使用领取前的进度；再次失败仍应 fail closed。
+    task_state = get_task_state()
+    if not task_state["available"]:
+        report["messages"].append(f"任务状态不可用：{task_state['error']}")
+        report["messages"].append("状态不确定，本次不会购买或解锁")
+        return report
+    tasks = analyze_tasks(task_state["items"])
+    history = history_state["items"]
+    packages = package_state["packages"]
     if not tasks or not history:
-        report["messages"].append("无法读取任务或积分状态，请检查登录状态")
+        report["messages"].append("任务或积分记录为空，无法安全生成购买计划")
         return report
 
     plan = build_optimization_plan(
         history=history,
-        packages=get_package_list(),
+        packages=packages,
         tasks=tasks,
         **options,
     )
@@ -993,7 +1238,13 @@ def execute_points_optimization(
             time.sleep(1)
 
     # 必须从资源包接口确认额度已到账，避免无包时退化为20分直购影片。
-    verified_quota = get_package_summary()["remaining"]
+    verified_summary = get_package_summary()
+    if not verified_summary["available"]:
+        report["messages"].append(
+            f"无法确认购买后额度：{verified_summary['error']}，已停止解锁"
+        )
+        return report
+    verified_quota = verified_summary["remaining"]
     unlock_count = min(plan.unlocks_now, verified_quota)
     if plan.unlocks_now > unlock_count:
         report["messages"].append(
@@ -1027,6 +1278,18 @@ def daily_unlock():
     print(f"每日解锁任务 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 
+    task_state = get_task_state()
+    package_summary = get_package_summary()
+    if not task_state["available"]:
+        print(f"❌ {task_state['error']}，已停止解锁")
+        return False
+    if not package_summary["available"]:
+        print(f"❌ {package_summary['error']}，无法确认额度，已停止解锁")
+        return False
+    if package_summary["remaining"] <= 0:
+        print("❌ 已确认资源包次数为 0，已停止解锁")
+        return False
+
     # 领取常用任务（避免未领取导致进度异常）
     accept_results = accept_default_tasks()
     for unique, info in accept_results.items():
@@ -1039,7 +1302,11 @@ def daily_unlock():
                 print(f"⚠️ 任务 {unique} 领取失败: {info['msg']}")
 
     # 分析任务状态
-    tasks = analyze_tasks()
+    refreshed_task_state = get_task_state()
+    if not refreshed_task_state["available"]:
+        print(f"❌ {refreshed_task_state['error']}，已停止解锁")
+        return False
+    tasks = analyze_tasks(refreshed_task_state["items"])
     if not tasks:
         print("无法获取任务状态，退出")
         return False

@@ -45,6 +45,16 @@ HISTORY = [
 ]
 
 
+def available_state(items, key="items"):
+    return {
+        "available": True,
+        "auth_failed": False,
+        "retryable": False,
+        "error": "",
+        key: items,
+    }
+
+
 class OptimizerExecutionTests(unittest.TestCase):
     def test_purchase_is_verified_before_unlocking(self):
         package = {
@@ -60,14 +70,26 @@ class OptimizerExecutionTests(unittest.TestCase):
             "available_before": 30,
         }
         with (
-            patch.object(helper, "accept_default_tasks", return_value={}),
-            patch.object(helper, "analyze_tasks", return_value=active_tasks()),
-            patch.object(helper, "get_point_history", return_value=HISTORY),
             patch.object(
                 helper,
-                "get_package_list",
-                side_effect=[[], [package]],
+                "get_task_state",
+                return_value=available_state([]),
             ),
+            patch.object(
+                helper,
+                "get_point_history_state",
+                return_value=available_state(HISTORY),
+            ),
+            patch.object(
+                helper,
+                "get_package_state",
+                side_effect=[
+                    available_state([], "packages"),
+                    available_state([package], "packages"),
+                ],
+            ),
+            patch.object(helper, "accept_default_tasks", return_value={}),
+            patch.object(helper, "analyze_tasks", return_value=active_tasks()),
             patch.object(
                 helper,
                 "validate_purchasable_package",
@@ -97,10 +119,23 @@ class OptimizerExecutionTests(unittest.TestCase):
 
     def test_changed_shop_parameters_stop_before_purchase(self):
         with (
+            patch.object(
+                helper,
+                "get_task_state",
+                return_value=available_state([]),
+            ),
+            patch.object(
+                helper,
+                "get_point_history_state",
+                return_value=available_state(HISTORY),
+            ),
+            patch.object(
+                helper,
+                "get_package_state",
+                return_value=available_state([], "packages"),
+            ),
             patch.object(helper, "accept_default_tasks", return_value={}),
             patch.object(helper, "analyze_tasks", return_value=active_tasks()),
-            patch.object(helper, "get_point_history", return_value=HISTORY),
-            patch.object(helper, "get_package_list", return_value=[]),
             patch.object(
                 helper,
                 "validate_purchasable_package",
@@ -113,6 +148,32 @@ class OptimizerExecutionTests(unittest.TestCase):
 
         self.assertFalse(report["success"])
         self.assertIn("轻量包价格已变化", report["messages"])
+        buy.assert_not_called()
+        unlock.assert_not_called()
+
+    def test_unavailable_package_state_never_purchases(self):
+        unavailable = {
+            "available": False,
+            "auth_failed": False,
+            "retryable": True,
+            "error": "Error 522: Connection timed out",
+            "packages": [],
+        }
+        with (
+            patch.object(helper, "get_task_state", return_value=available_state([])),
+            patch.object(
+                helper,
+                "get_point_history_state",
+                return_value=available_state(HISTORY),
+            ),
+            patch.object(helper, "get_package_state", return_value=unavailable),
+            patch.object(helper, "buy_lightweight_package") as buy,
+            patch.object(helper, "unlock_movies_batch") as unlock,
+        ):
+            report = helper.execute_points_optimization()
+
+        self.assertFalse(report["success"])
+        self.assertIn("状态不确定，本次不会购买或解锁", report["messages"])
         buy.assert_not_called()
         unlock.assert_not_called()
 
